@@ -65,13 +65,17 @@
     var padLeft = parseFloat(cs.paddingLeft) || 0;
     var padRight = parseFloat(cs.paddingRight) || 0;
     var gap = this.opts.GAP != null ? this.opts.GAP : (parseFloat(cs.rowGap || cs.gap) || 0);
+    var borderX = (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0);
+    var borderY = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+    // Ancho y alto FRACCIONARIOS: clientWidth/clientHeight redondean a entero y
+    // una décima de píxel puede cambiar el salto de línea de un nombre largo.
     var rect = c.getBoundingClientRect();
     return {
       padTop: padTop,
       padBottom: padBottom,
       gap: gap,
-      width: Math.max(1, c.clientWidth - padLeft - padRight),
-      usable: Math.max(0, c.clientHeight - padTop - padBottom - (reservedBottom || 0) - gap),
+      width: Math.max(1, rect.width - borderX - padLeft - padRight),
+      usable: Math.max(0, rect.height - borderY - padTop - padBottom - (reservedBottom || 0) - gap),
       containerWidth: rect.width
     };
   };

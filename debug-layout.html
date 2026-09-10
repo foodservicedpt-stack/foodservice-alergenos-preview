@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Debug Layout — Food Service DPT Preview</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#0f172a;--panel:#1e293b;--line:#334155;--ok:#10b981;--bad:#ef4444;--warn:#f59e0b;--txt:#e2e8f0}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;flex-direction:column}
+  header{padding:14px 20px;background:#020617;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header h1{font-size:1rem;letter-spacing:2px;text-transform:uppercase}
+  header .tag{background:var(--warn);color:#1c1917;font-weight:800;font-size:.7rem;padding:3px 10px;border-radius:20px;letter-spacing:1px}
+  .controls{display:flex;gap:18px;padding:14px 20px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:flex-end}
+  .group{display:flex;flex-direction:column;gap:5px}
+  .group label{font-size:.68rem;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;font-weight:700}
+  select,button{background:#0f172a;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.85rem;font-family:inherit}
+  button{cursor:pointer;font-weight:700}
+  button.primary{background:#2563eb;border-color:#2563eb;color:#fff}
+  button:hover{filter:brightness(1.15)}
+  .counts{display:flex;gap:6px;flex-wrap:wrap}
+  .counts button{padding:6px 12px}
+  .counts button.active{background:#2563eb;border-color:#2563eb;color:#fff}
+  main{flex:1;display:flex;min-height:0}
+  .stage{flex:1;overflow:auto;padding:16px;background:#0b1220;position:relative}
+  .frame-wrap{transform-origin:top left;position:relative}
+  iframe{border:1px solid var(--line);border-radius:8px;background:#fff;display:block}
+  .side{width:420px;flex-shrink:0;border-left:1px solid var(--line);background:var(--panel);overflow:auto;padding:16px}
+  .side h2{font-size:.8rem;text-transform:uppercase;letter-spacing:1px;color:#93c5fd;margin-bottom:10px}
+  .kpi{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:.85rem;margin-bottom:16px}
+  .kpi .v{font-weight:800;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.75rem;font-weight:800}
+  .pill.ok{background:rgba(16,185,129,.2);color:#6ee7b7}
+  .pill.bad{background:rgba(239,68,68,.2);color:#fca5a5}
+  table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:8px}
+  th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
+  th{color:#94a3b8;font-size:.68rem;text-transform:uppercase;letter-spacing:1px}
+  td.num{font-variant-numeric:tabular-nums}
+  .problems{margin-top:10px;font-size:.75rem;color:#fca5a5;max-height:180px;overflow:auto}
+  .hint{font-size:.72rem;color:#94a3b8;margin-top:12px;line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+  <h1>Debug Layout</h1>
+  <span class="tag">PREVIEW · DATOS MOCK</span>
+  <span style="font-size:.75rem;color:#94a3b8">Motor: <code>layout-engine.js</code></span>
+</header>
+
+<div class="controls">
+  <div class="group">
+    <label>Nº de platos</label>
+    <div class="counts" id="counts"></div>
+  </div>
+  <div class="group">
+    <label>Contenido</label>
+    <select id="profile">
+      <option value="corto">Nombres cortos</option>
+      <option value="largo">Nombres muy largos</option>
+      <option value="traduccion">Traducción muy larga</option>
+      <option value="alergenos">Muchos alérgenos</option>
+      <option value="trazas">Muchas trazas</option>
+      <option value="extremo" selected>Combinación extrema</option>
+    </select>
+  </div>
+  <div class="group">
+    <label>Resolución</label>
+    <select id="resolution">
+      <option value="1280x720">1280 × 720</option>
+      <option value="1920x1080" selected>1920 × 1080</option>
+      <option value="2560x1440">2560 × 1440</option>
+      <option value="3840x2160">3840 × 2160</option>
+    </select>
+  </div>
+  <div class="group">
+    <label>Vista</label>
+    <select id="fit">
+      <option value="fit" selected>Ajustar al panel</option>
+      <option value="100">100 %</option>
+    </select>
+  </div>
+  <div class="group">
+    <label>&nbsp;</label>
+    <button class="primary" id="run">Ejecutar</button>
+  </div>
+  <div class="group">
+    <label>&nbsp;</label>
+    <button id="runAll">Matriz completa (1–20)</button>
+  </div>
+</div>
+
+<main>
+  <div class="stage" id="stage">
+    <div class="frame-wrap" id="frameWrap">
+      <iframe id="frame" src="./comedor.html" width="1920" height="1080" title="Comedor"></iframe>
+    </div>
+  </div>
+  <aside class="side">
+    <h2>Resultado</h2>
+    <div id="kpis" class="kpi"></div>
+    <div id="matrix"></div>
+    <h2 style="margin-top:16px">Incidencias</h2>
+    <div id="problems" class="problems">—</div>
+    <div class="hint">
+      Mide el motor real dentro de un iframe al tamaño de la resolución elegida. Comprueba
+      overflow horizontal/vertical, elementos fuera de contenedor, texto truncado y solapes.
+    </div>
+  </aside>
+</main>
+
+<script>
+var ALL_IDS = ['gluten','crustaceos','huevos','pescado','cacahuetes','soja','lacteos','cascara','apio','mostaza','sesamo','sulfitos','moluscos','altramuces'];
+var LONG_ES = 'ENSALADA TEMPLADA DE QUINOA CON AGUACATE, TOMATE CHERRY, MAIZ DULCE Y ALINO DE MOSTAZA Y MIEL';
+var LONG_EN = 'Warm quinoa salad with avocado, cherry tomato, sweetcorn and honey mustard dressing with toasted sesame seeds';
+var MID_ES = 'MERLUZA A LA PLANCHA CON PATATAS PANADERA';
+
+function makeDish(profile, i) {
+  var d = { id: 'd' + i, oculto: false, sinGluten: (i % 3 === 0), contiene: [], trazas: [] };
+  if (profile === 'corto') { d.nombreEs = 'CROQUETAS'; d.nombreEn = 'Croquettes'; d.contiene = ALL_IDS.slice(0, 1); }
+  else if (profile === 'largo') { d.nombreEs = LONG_ES; d.nombreEn = LONG_EN; d.contiene = ALL_IDS.slice(0, 2); }
+  else if (profile === 'traduccion') { d.nombreEs = 'SOPA'; d.nombreEn = LONG_EN + ' ' + LONG_EN; d.contiene = ALL_IDS.slice(0, 1); }
+  else if (profile === 'alergenos') { d.nombreEs = MID_ES; d.nombreEn = 'Grilled hake with baker\u2019s potatoes'; d.contiene = ALL_IDS.slice(0, 14); }
+  else if (profile === 'trazas') { d.nombreEs = MID_ES; d.nombreEn = 'Grilled hake with baker\u2019s potatoes'; d.trazas = ALL_IDS.slice(0, 14); }
+  else { d.nombreEs = LONG_ES; d.nombreEn = LONG_EN; d.contiene = ALL_IDS.slice(0, 14); d.trazas = ALL_IDS.slice(0, 14); }
+  return d;
+}
+function makeData(profile, n) { var a = []; for (var i = 0; i < n; i++) a.push(makeDish(profile, i)); return a; }
+
+var frame = document.getElementById('frame');
+var frameWrap = document.getElementById('frameWrap');
+var stage = document.getElementById('stage');
+var activeCount = 10;
+
+function buildCountButtons() {
+  var box = document.getElementById('counts');
+  [1,2,4,6,8,10,12,16,20].forEach(function (n) {
+    var b = document.createElement('button');
+    b.textContent = n; b.dataset.n = n;
+    if (n === activeCount) b.classList.add('active');
+    b.onclick = function () {
+      activeCount = n;
+      Array.prototype.forEach.call(box.children, function (c) { c.classList.toggle('active', +c.dataset.n === n); });
+      run();
+    };
+    box.appendChild(b);
+  });
+}
+
+function currentResolution() {
+  var p = document.getElementById('resolution').value.split('x');
+  return { w: +p[0], h: +p[1] };
+}
+function applyResolution() {
+  var r = currentResolution();
+  frame.setAttribute('width', r.w);
+  frame.setAttribute('height', r.h);
+  frame.style.width = r.w + 'px';
+  frame.style.height = r.h + 'px';
+  fitFrame();
+}
+function fitFrame() {
+  var r = currentResolution();
+  if (document.getElementById('fit').value === '100') { frameWrap.style.transform = 'none'; frameWrap.style.width = r.w + 'px'; frameWrap.style.height = r.h + 'px'; return; }
+  var availW = stage.clientWidth - 32, availH = stage.clientHeight - 32;
+  var k = Math.min(1, availW / r.w, availH / r.h);
+  frameWrap.style.transform = 'scale(' + k + ')';
+  frameWrap.style.width = r.w + 'px';
+  frameWrap.style.height = r.h + 'px';
+}
+function measureEvalCode(profile, n) {
+  var data = JSON.stringify(makeData(profile, n));
+  return '(function(){' +
+    'var data=' + data + ';' +
+    'try{ latestComedorData={fecha:todayStr(),platos:data}; }catch(e){}' +
+    'try{ if(window.MOCK_DB&&window.MOCK_DB["menu/comedor"]) window.MOCK_DB["menu/comedor"].platos=data; }catch(e){}' +
+    'window.initDishPagination(data);' +
+    'var mc=document.getElementById("main-col");' +
+    'var v=dishPagination.lastValidation; var types={}; var outside=0;' +
+    'if(v) v.problems.forEach(function(p){ types[p.type]=(types[p.type]||0)+1; if(p.type==="child-outside-row") outside++; });' +
+    'return { escala:+dishPagination.scale.toFixed(3), paginas:dishPagination.pages.map(function(p){return p.length;}),' +
+    ' ok:v?v.ok:null, problemas:types, fuera:outside, truncado:(types["text-clipped"]||0),' +
+    ' overflowH: mc.scrollWidth>mc.clientWidth, overflowV: mc.scrollHeight>mc.clientHeight,' +
+    ' filas: document.querySelectorAll("#main-col .dish-row").length };' +
+  '})()';
+}
+function run() {
+  applyResolution();
+  var profile = document.getElementById('profile').value;
+  setTimeout(function () {
+    var res = frame.contentWindow.eval(measureEvalCode(profile, activeCount));
+    showKpis(profile, activeCount, res);
+  }, 350);
+}
+function showKpis(profile, n, r) {
+  var box = document.getElementById('kpis');
+  box.innerHTML =
+    row('Platos', n) +
+    row('Contenido', profile) +
+    row('Escala', r.escala) +
+    row('Páginas', r.paginas.length + ' (' + r.paginas.join('+') + ')') +
+    row('Filas en página', r.filas) +
+    row('Overflow horizontal', pill(!r.overflowH)) +
+    row('Overflow vertical', pill(!r.overflowV)) +
+    row('Elementos fuera', pill(r.fuera === 0) + ' <span class="v">' + r.fuera + '</span>') +
+    row('Texto truncado', pill(r.truncado === 0) + ' <span class="v">' + r.truncado + '</span>') +
+    row('Validación', pill(!!r.ok));
+  var probs = Object.keys(r.problemas || {});
+  document.getElementById('problems').innerHTML = probs.length
+    ? probs.map(function (k) { return '#' + k + ' × ' + r.problemas[k]; }).join('<br>')
+    : 'Sin incidencias.';
+}
+function row(k, v) { return '<div>' + k + '</div><div class="v">' + v + '</div>'; }
+function pill(ok) { return '<span class="pill ' + (ok ? 'ok' : 'bad') + '">' + (ok ? 'OK' : 'FALLO') + '</span>'; }
+
+function runAll() {
+  applyResolution();
+  var profile = document.getElementById('profile').value;
+  var counts = [1,2,4,6,8,10,12,16,20];
+  var rows = [], i = 0;
+  document.getElementById('matrix').innerHTML = '<h2 style="margin-top:16px">Matriz 1–20</h2><table id="mtx"><thead><tr><th>Nº</th><th>Escala</th><th>Páginas</th><th>Overflow</th><th>Fuera</th><th>Truncado</th><th>Estado</th></tr></thead><tbody></tbody></table>';
+  function step() {
+    if (i >= counts.length) return;
+    var n = counts[i++];
+    var r = frame.contentWindow.eval(measureEvalCode(profile, n));
+    var tbody = document.querySelector('#mtx tbody');
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td class="num">' + n + '</td><td class="num">' + r.escala + '</td><td class="num">' + r.paginas.join('+') + '</td>' +
+      '<td>' + ((r.overflowH || r.overflowV) ? 'SÍ' : 'no') + '</td><td class="num">' + r.fuera + '</td><td class="num">' + r.truncado + '</td>' +
+      '<td>' + pill(!!r.ok) + '</td>';
+    tbody.appendChild(tr);
+    setTimeout(step, 120);
+  }
+  setTimeout(step, 350);
+}
+
+document.getElementById('run').onclick = run;
+document.getElementById('runAll').onclick = runAll;
+document.getElementById('profile').onchange = run;
+document.getElementById('resolution').onchange = run;
+document.getElementById('fit').onchange = fitFrame;
+window.addEventListener('resize', fitFrame);
+
+buildCountButtons();
+frame.addEventListener('load', function () { setTimeout(run, 400); });
+applyResolution();
+</script>
+</body>
+</html>
