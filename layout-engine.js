@@ -160,15 +160,23 @@
     var scale = sMax;
     var self2 = this;
 
+    // Suelo del paso de minimización de páginas: nunca por debajo de
+    // LEGIBILITY_FLOOR, pero tampoco por encima de la mayor escala válida.
+    var floorScale = Math.min(sMax, Math.max(this.opts.MIN_SCALE, this.opts.LEGIBILITY_FLOOR));
+
     // Política: minimizar el número de páginas, pero sin bajar del suelo de
     // legibilidad; entre las escalas que logran ese mínimo, la mayor posible.
     if (!this.opts.maxPages) {
-      var floorScale = Math.min(sMax, Math.max(this.opts.MIN_SCALE, this.opts.LEGIBILITY_FLOOR));
       if (floorScale < sMax) {
         var pTop = self2._pageCount(items, sMax, m, null);
         var pFloor = self2._pageCount(items, floorScale, m, null);
         if (pFloor < pTop) {
+          // floorScale ya se midió y logra pFloor páginas: es un punto de
+          // partida VÁLIDO. Sin inicializar aquí, si el umbral que logra el
+          // mínimo es más estrecho que SCALE_PRECISION la búsqueda no muestrea
+          // ninguna escala válida y la escala se quedaba en sMax (sin ahorro).
           var loS = floorScale, hiS = sMax;
+          scale = floorScale;
           while ((hiS - loS) > this.opts.SCALE_PRECISION) {
             var midS = (loS + hiS) / 2;
             if (self2._pageCount(items, midS, m, null) <= pFloor) { scale = midS; loS = midS; }
@@ -183,11 +191,29 @@
       : this._measure(items, scale, m.width).heights;
     var pages = this._paginate(items, heights, m, this.opts.maxPages);
 
+    // Motivo explícito de la escala elegida (observabilidad; no altera el cálculo):
+    //   unfit-min-scale   → nada cabe ni siquiera a MIN_SCALE (se usa MIN_SCALE como último recurso)
+    //   content-limited   → el propio contenido obliga a bajar de LEGIBILITY_FLOOR
+    //   max-scale         → cabe a MAX_SCALE y no se gana nada reduciendo
+    //   pages-minimized   → se redujo (sin bajar del suelo) para ahorrar páginas
+    var reason;
+    if (!best) reason = 'unfit-min-scale';
+    else if (Math.abs(scale - sMax) < 1e-9) {
+      reason = (sMax < this.opts.LEGIBILITY_FLOOR - 1e-9) ? 'content-limited' : 'max-scale';
+    } else reason = 'pages-minimized';
+
     this.lastScale = scale;
     this.lastHeights = heights;
     this.lastPages = pages;
     this.lastUsable = m.usable;
-    return { scale: scale, pages: pages, heights: heights, usable: m.usable, metrics: m };
+    this.lastReason = reason;
+    this.lastSMax = sMax;
+    this.lastFloorScale = floorScale;
+    this.lastUnfit = !best;
+    return {
+      scale: scale, pages: pages, heights: heights, usable: m.usable, metrics: m,
+      sMax: sMax, floorScale: floorScale, reason: reason, unfit: !best
+    };
   };
 
   // Número de páginas (reparto secuencial con capacidad dada).
@@ -314,6 +340,10 @@
       ok: problems.length === 0,
       problems: problems,
       scale: this.lastScale,
+      sMax: this.lastSMax,
+      floorScale: this.lastFloorScale,
+      reason: this.lastReason,
+      unfit: this.lastUnfit,
       pages: this.lastPages.length,
       rows: rows.length
     };

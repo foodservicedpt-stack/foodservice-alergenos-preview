@@ -1108,7 +1108,10 @@ function reservePaginationHeight() {
   const pagEl = document.getElementById("dish-pagination");
   if (!pagEl) return 0;
   pagEl.style.display = "flex";
-  if (!pagEl.children.length) pagEl.innerHTML = '<button class="page-dot"></button>';
+  // Estructura SIEMPRE idéntica (un punto) para que la altura reservada no
+  // dependa del estado previo: así el cálculo es determinista entre una carga
+  // limpia y un recálculo por resize.
+  pagEl.innerHTML = '<button class="page-dot"></button>';
   return pagEl.getBoundingClientRect().height;
 }
 
@@ -1214,11 +1217,19 @@ function buildLegend(usedIds) {
 }
 
 
+// Recalcular al redimensionar. Doble requestAnimationFrame + debounce:
+// garantiza que el layout y las unidades vmin ya están asentados antes de
+// medir (si no, la sonda mide con métricas antiguas) y evita recalcular en
+// ráfaga cuando llegan varios eventos seguidos.
+let resizeRaf = 0;
 window.addEventListener('resize', () => {
-  requestAnimationFrame(recomputeDishPagination);
-  if (document.getElementById('turno-overlay')?.classList.contains('visible')) {
-    requestAnimationFrame(fitTurnoOverlay);
-  }
+  cancelAnimationFrame(resizeRaf);
+  resizeRaf = requestAnimationFrame(() => requestAnimationFrame(() => {
+    recomputeDishPagination();
+    if (document.getElementById('turno-overlay')?.classList.contains('visible')) {
+      fitTurnoOverlay();
+    }
+  }));
 });
 
 // ══════════════════════════════════════════════

@@ -218,7 +218,8 @@ function reservePaginationHeight() {
   const pagEl = document.getElementById("dish-pagination");
   if (!pagEl) return 0;
   pagEl.style.display = "flex";
-  if (!pagEl.children.length) pagEl.innerHTML = '<button class="page-dot"></button>';
+  // Estructura SIEMPRE idéntica (un punto): altura reservada determinista.
+  pagEl.innerHTML = '<button class="page-dot"></button>';
   return pagEl.getBoundingClientRect().height;
 }
 
@@ -330,7 +331,15 @@ function initFirebase() {
   } catch(e) { console.error(e); showNoData(false); }
 }
 
-window.addEventListener('resize', () => { stopRotation(); if (latestData && latestData.fecha === todayStr()) renderMenu(latestData); });
+// Recalcular al redimensionar con doble rAF + debounce (ver comedor.html).
+let resizeRaf = 0;
+window.addEventListener('resize', () => {
+  cancelAnimationFrame(resizeRaf);
+  resizeRaf = requestAnimationFrame(() => requestAnimationFrame(() => {
+    stopRotation();
+    if (latestData && latestData.fecha === todayStr()) renderMenu(latestData);
+  }));
+});
 window.addEventListener('beforeunload', () => { stopRotation(); try { if (typeof firebase !== 'undefined') firebase.database().ref('menu/comedor').off(); } catch(e){} });
 document.addEventListener('DOMContentLoaded', () => { buildLegend(); initFirebase(); updateClock(); });
 </script>

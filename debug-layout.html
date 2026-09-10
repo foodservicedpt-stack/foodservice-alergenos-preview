@@ -8,60 +8,67 @@
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   :root{--bg:#0f172a;--panel:#1e293b;--line:#334155;--ok:#10b981;--bad:#ef4444;--warn:#f59e0b;--txt:#e2e8f0}
   body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;flex-direction:column}
-  header{padding:14px 20px;background:#020617;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header{padding:12px 20px;background:#020617;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
   header h1{font-size:1rem;letter-spacing:2px;text-transform:uppercase}
   header .tag{background:var(--warn);color:#1c1917;font-weight:800;font-size:.7rem;padding:3px 10px;border-radius:20px;letter-spacing:1px}
-  .controls{display:flex;gap:18px;padding:14px 20px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:flex-end}
+  .controls{display:flex;gap:16px;padding:12px 20px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:flex-end}
   .group{display:flex;flex-direction:column;gap:5px}
-  .group label{font-size:.68rem;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;font-weight:700}
+  .group label{font-size:.66rem;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;font-weight:700}
   select,button{background:#0f172a;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.85rem;font-family:inherit}
+  select{min-width:230px}
   button{cursor:pointer;font-weight:700}
   button.primary{background:#2563eb;border-color:#2563eb;color:#fff}
   button:hover{filter:brightness(1.15)}
   .counts{display:flex;gap:6px;flex-wrap:wrap}
   .counts button{padding:6px 12px}
   .counts button.active{background:#2563eb;border-color:#2563eb;color:#fff}
+  .counts button:disabled{opacity:.35;cursor:not-allowed}
   main{flex:1;display:flex;min-height:0}
   .stage{flex:1;overflow:auto;padding:16px;background:#0b1220;position:relative}
   .frame-wrap{transform-origin:top left;position:relative}
   iframe{border:1px solid var(--line);border-radius:8px;background:#fff;display:block}
-  .side{width:420px;flex-shrink:0;border-left:1px solid var(--line);background:var(--panel);overflow:auto;padding:16px}
-  .side h2{font-size:.8rem;text-transform:uppercase;letter-spacing:1px;color:#93c5fd;margin-bottom:10px}
-  .kpi{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:.85rem;margin-bottom:16px}
+  .side{width:430px;flex-shrink:0;border-left:1px solid var(--line);background:var(--panel);overflow:auto;padding:16px}
+  .side h2{font-size:.78rem;text-transform:uppercase;letter-spacing:1px;color:#93c5fd;margin:0 0 10px}
+  .kpi{display:grid;grid-template-columns:1fr auto;gap:5px 12px;font-size:.84rem;margin-bottom:14px}
   .kpi .v{font-weight:800;font-variant-numeric:tabular-nums}
-  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.75rem;font-weight:800}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.74rem;font-weight:800}
   .pill.ok{background:rgba(16,185,129,.2);color:#6ee7b7}
   .pill.bad{background:rgba(239,68,68,.2);color:#fca5a5}
-  table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:8px}
-  th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
-  th{color:#94a3b8;font-size:.68rem;text-transform:uppercase;letter-spacing:1px}
+  table{width:100%;border-collapse:collapse;font-size:.76rem;margin-top:6px}
+  th,td{text-align:left;padding:4px 5px;border-bottom:1px solid var(--line)}
+  th{color:#94a3b8;font-size:.66rem;text-transform:uppercase;letter-spacing:1px}
   td.num{font-variant-numeric:tabular-nums}
-  .problems{margin-top:10px;font-size:.75rem;color:#fca5a5;max-height:180px;overflow:auto}
-  .hint{font-size:.72rem;color:#94a3b8;margin-top:12px;line-height:1.5}
+  .problems{margin-top:8px;font-size:.74rem;color:#fca5a5;max-height:150px;overflow:auto}
+  .desc{font-size:.74rem;color:#cbd5e1;background:#0b1220;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:12px;line-height:1.45}
+  .hint{font-size:.71rem;color:#94a3b8;margin-top:12px;line-height:1.5}
+  code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px}
 </style>
 </head>
 <body>
 <header>
   <h1>Debug Layout</h1>
   <span class="tag">PREVIEW · DATOS MOCK</span>
-  <span style="font-size:.75rem;color:#94a3b8">Motor: <code>layout-engine.js</code></span>
+  <span style="font-size:.74rem;color:#94a3b8">Motor: <code>layout-engine.js</code></span>
 </header>
 
 <div class="controls">
   <div class="group">
-    <label>Nº de platos</label>
-    <div class="counts" id="counts"></div>
+    <label>Escenario</label>
+    <select id="scenario">
+      <option value="A">A · Platos normales</option>
+      <option value="B">B · Nombres largos en español</option>
+      <option value="C">C · Nombres largos ES + traducciones largas</option>
+      <option value="D">D · Platos con muchos alérgenos</option>
+      <option value="E">E · Platos con muchas trazas</option>
+      <option value="F">F · Largos + traducciones + alérgenos + trazas</option>
+      <option value="G" selected>G · Mezcla realista cortos y largos</option>
+      <option value="H">H · Caso extremo deliberadamente difícil</option>
+      <option value="MENU12">MENÚ 12 PLATOS · caso extremo</option>
+    </select>
   </div>
   <div class="group">
-    <label>Contenido</label>
-    <select id="profile">
-      <option value="corto">Nombres cortos</option>
-      <option value="largo">Nombres muy largos</option>
-      <option value="traduccion">Traducción muy larga</option>
-      <option value="alergenos">Muchos alérgenos</option>
-      <option value="trazas">Muchas trazas</option>
-      <option value="extremo" selected>Combinación extrema</option>
-    </select>
+    <label>Nº de platos</label>
+    <div class="counts" id="counts"></div>
   </div>
   <div class="group">
     <label>Resolución</label>
@@ -79,14 +86,9 @@
       <option value="100">100 %</option>
     </select>
   </div>
-  <div class="group">
-    <label>&nbsp;</label>
-    <button class="primary" id="run">Ejecutar</button>
-  </div>
-  <div class="group">
-    <label>&nbsp;</label>
-    <button id="runAll">Matriz completa (1–20)</button>
-  </div>
+  <div class="group"><label>&nbsp;</label><button class="primary" id="run">Ejecutar</button></div>
+  <div class="group"><label>&nbsp;</label><button id="runAll">Matriz 1–20</button></div>
+  <div class="group"><label>&nbsp;</label><button id="runResize">Probar resize</button></div>
 </div>
 
 <main>
@@ -96,14 +98,17 @@
     </div>
   </div>
   <aside class="side">
+    <div class="desc" id="desc"></div>
     <h2>Resultado</h2>
     <div id="kpis" class="kpi"></div>
     <div id="matrix"></div>
-    <h2 style="margin-top:16px">Incidencias</h2>
+    <div id="resizeBox"></div>
+    <h2 style="margin-top:14px">Incidencias</h2>
     <div id="problems" class="problems">—</div>
     <div class="hint">
-      Mide el motor real dentro de un iframe al tamaño de la resolución elegida. Comprueba
-      overflow horizontal/vertical, elementos fuera de contenedor, texto truncado y solapes.
+      Mide el motor real dentro de un iframe al tamaño exacto de la resolución elegida.
+      <code>content-limited</code> = el contenido obliga a bajar de 0.85; <code>unfit-min-scale</code> =
+      no cabe ni a 0.50 (único caso con overflow).
     </div>
   </aside>
 </main>
@@ -112,19 +117,55 @@
 var ALL_IDS = ['gluten','crustaceos','huevos','pescado','cacahuetes','soja','lacteos','cascara','apio','mostaza','sesamo','sulfitos','moluscos','altramuces'];
 var LONG_ES = 'ENSALADA TEMPLADA DE QUINOA CON AGUACATE, TOMATE CHERRY, MAIZ DULCE Y ALINO DE MOSTAZA Y MIEL';
 var LONG_EN = 'Warm quinoa salad with avocado, cherry tomato, sweetcorn and honey mustard dressing with toasted sesame seeds';
-var MID_ES = 'MERLUZA A LA PLANCHA CON PATATAS PANADERA';
-
-function makeDish(profile, i) {
-  var d = { id: 'd' + i, oculto: false, sinGluten: (i % 3 === 0), contiene: [], trazas: [] };
-  if (profile === 'corto') { d.nombreEs = 'CROQUETAS'; d.nombreEn = 'Croquettes'; d.contiene = ALL_IDS.slice(0, 1); }
-  else if (profile === 'largo') { d.nombreEs = LONG_ES; d.nombreEn = LONG_EN; d.contiene = ALL_IDS.slice(0, 2); }
-  else if (profile === 'traduccion') { d.nombreEs = 'SOPA'; d.nombreEn = LONG_EN + ' ' + LONG_EN; d.contiene = ALL_IDS.slice(0, 1); }
-  else if (profile === 'alergenos') { d.nombreEs = MID_ES; d.nombreEn = 'Grilled hake with baker\u2019s potatoes'; d.contiene = ALL_IDS.slice(0, 14); }
-  else if (profile === 'trazas') { d.nombreEs = MID_ES; d.nombreEn = 'Grilled hake with baker\u2019s potatoes'; d.trazas = ALL_IDS.slice(0, 14); }
-  else { d.nombreEs = LONG_ES; d.nombreEn = LONG_EN; d.contiene = ALL_IDS.slice(0, 14); d.trazas = ALL_IDS.slice(0, 14); }
+var NORMAL = [
+  { es:'CROQUETAS CASERAS DE JAMON', en:'Homemade ham croquettes', c:['gluten','lacteos','huevos'], t:['apio'] },
+  { es:'MERLUZA A LA PLANCHA', en:'Grilled hake', c:['pescado'], t:['lacteos','gluten'] },
+  { es:'LENTEJAS ESTOFADAS', en:'Stewed lentils', c:['sulfitos'], t:['apio'] },
+  { es:'POLLO ASADO CON PATATAS', en:'Roast chicken with potatoes', c:[], t:[] },
+  { es:'PAELLA DE MARISCO', en:'Seafood paella', c:['crustaceos','moluscos','pescado'], t:['sulfitos'] },
+  { es:'TARTA DE QUESO', en:'Cheesecake', c:['lacteos','huevos','gluten'], t:['cascara','soja'] }
+];
+var MENU12 = [
+  { es:'GUISO TRADICIONAL DE GARBANZOS CON ESPINACAS, ZANAHORIA, CEBOLLA CARAMELIZADA Y SALSA DE TOMATE CASERA', en:'Traditional chickpea stew with spinach, carrot, caramelised onion and homemade tomato sauce', c:['apio','sulfitos'], t:['gluten','lacteos'], g:true },
+  { es:'MERLUZA AL HORNO CON PATATAS PANADERA Y PIMIENTOS ROJOS ASADOS', en:'Baked hake with baker\u2019s potatoes and roasted red peppers', c:['pescado'], t:['lacteos','gluten'], g:true },
+  { es:'CROQUETAS CASERAS DE JAMON IBERICO', en:'Homemade Iberian ham croquettes', c:['gluten','lacteos','huevos'], t:['apio'], g:false },
+  { es:'ENSALADA TEMPLADA DE QUINOA CON AGUACATE, TOMATE CHERRY, MAIZ DULCE Y ALINO DE MOSTAZA Y MIEL', en:'Warm quinoa salad with avocado, cherry tomato, sweetcorn and honey mustard dressing', c:['gluten','crustaceos','huevos','pescado','cacahuetes','soja','lacteos','cascara','apio','mostaza','sesamo','sulfitos','moluscos','altramuces'], t:['gluten','sesamo'], g:false },
+  { es:'LENTEJAS ESTOFADAS CON CHORIZO Y MORCILLA', en:'Stewed lentils with chorizo and black pudding', c:['sulfitos'], t:['apio'], g:true },
+  { es:'POLLO ASADO DE CORRAL CON PATATAS Y PIMIENTOS', en:'Free-range roast chicken with potatoes and peppers', c:[], t:[], g:true },
+  { es:'TARTA DE QUESO CON FRUTOS DEL BOSQUE Y SALSA DE FRAMBUESA', en:'Cheesecake with wild berries and raspberry sauce', c:['lacteos','huevos','gluten'], t:['cascara','soja'], g:false },
+  { es:'PAELLA DE MARISCO CON CALAMARES Y GAMBAS', en:'Seafood paella with squid and prawns', c:['crustaceos','moluscos','pescado'], t:['sulfitos'], g:true },
+  { es:'SOPA DE PICADILLO CON HUEVO DURO Y JAMON', en:'Picadillo soup with hard-boiled egg and ham', c:['gluten','huevos'], t:['apio'], g:false },
+  { es:'CREMA DE CALABAZA CON SEMILLAS DE SESAMO TOSTADO', en:'Pumpkin soup with toasted sesame seeds', c:['lacteos'], t:['sesamo','apio'], g:true },
+  { es:'BACALAO A LA VIZCAINA CON PATATAS Y PIMIENTOS', en:'Biscayan-style cod with potatoes and peppers', c:['pescado','sulfitos'], t:['gluten'], g:false },
+  { es:'FRUTA DE TEMPORADA Y YOGUR NATURAL', en:'Seasonal fruit and natural yoghurt', c:['lacteos'], t:[], g:true }
+];
+var DESCRIPTIONS = {
+  A: 'Platos normales: nombres cortos o medios, 0–3 alérgenos.',
+  B: 'Nombres largos en español, traducción corta.',
+  C: 'Nombres largos en español y traducciones inglesas largas.',
+  D: 'Nombres medios con los 14 alérgenos declarados.',
+  E: 'Nombres medios con las 14 trazas declaradas.',
+  F: 'Nombres y traducciones largos + 14 alérgenos + 14 trazas.',
+  G: 'Mezcla realista: alterna platos cortos y largos con alérgenos variados.',
+  H: 'Caso extremo deliberadamente difícil: nombre muy largo + traducción muy larga + 14 alérgenos + 14 trazas en todos los platos.',
+  MENU12: 'Menú real de 12 platos con nombres largos, traducciones largas y combinaciones variadas de alérgenos y trazas. Fuerza el escenario del encargo.'
+};
+function makeDish(sc, i) {
+  var d = { id:'d'+i, oculto:false, sinGluten:(i%3===0), contiene:[], trazas:[] };
+  if (sc === 'A') { var n = NORMAL[i % NORMAL.length]; d.nombreEs=n.es; d.nombreEn=n.en; d.contiene=n.c.slice(); d.trazas=n.t.slice(); }
+  else if (sc === 'B') { d.nombreEs=LONG_ES; d.nombreEn='Salad'; d.contiene=ALL_IDS.slice(0,2); }
+  else if (sc === 'C') { d.nombreEs=LONG_ES; d.nombreEn=LONG_EN; d.contiene=ALL_IDS.slice(0,2); }
+  else if (sc === 'D') { d.nombreEs='MERLUZA A LA PLANCHA'; d.nombreEn='Grilled hake'; d.contiene=ALL_IDS.slice(0,14); }
+  else if (sc === 'E') { d.nombreEs='MERLUZA A LA PLANCHA'; d.nombreEn='Grilled hake'; d.trazas=ALL_IDS.slice(0,14); }
+  else if (sc === 'F') { d.nombreEs=LONG_ES; d.nombreEn=LONG_EN; d.contiene=ALL_IDS.slice(0,14); d.trazas=ALL_IDS.slice(0,14); }
+  else if (sc === 'G') { var r = NORMAL[i % NORMAL.length]; var largos = (i % 3 === 0); d.nombreEs = largos ? LONG_ES : r.es; d.nombreEn = largos ? LONG_EN : r.en; d.contiene = largos ? ALL_IDS.slice(0,4) : r.c.slice(); d.trazas = largos ? ALL_IDS.slice(4,8) : r.t.slice(); }
+  else { d.nombreEs=LONG_ES + ' CON SALSA DE TOMATE CASERA Y HIERBAS PROVENZALES'; d.nombreEn=LONG_EN + ', served with homemade tomato sauce and Provencal herbs'; d.contiene=ALL_IDS.slice(0,14); d.trazas=ALL_IDS.slice(0,14); }
   return d;
 }
-function makeData(profile, n) { var a = []; for (var i = 0; i < n; i++) a.push(makeDish(profile, i)); return a; }
+function buildData(sc, n) {
+  if (sc === 'MENU12') return MENU12.map(function (m, i) { return { id:'m'+i, oculto:false, sinGluten:!!m.g, nombreEs:m.es, nombreEn:m.en, contiene:m.c.slice(), trazas:m.t.slice() }; });
+  var a = []; for (var i = 0; i < n; i++) a.push(makeDish(sc, i)); return a;
+}
 
 var frame = document.getElementById('frame');
 var frameWrap = document.getElementById('frameWrap');
@@ -137,110 +178,130 @@ function buildCountButtons() {
     var b = document.createElement('button');
     b.textContent = n; b.dataset.n = n;
     if (n === activeCount) b.classList.add('active');
-    b.onclick = function () {
-      activeCount = n;
-      Array.prototype.forEach.call(box.children, function (c) { c.classList.toggle('active', +c.dataset.n === n); });
-      run();
-    };
+    b.onclick = function () { activeCount = n; syncCounts(); run(); };
     box.appendChild(b);
   });
 }
-
-function currentResolution() {
-  var p = document.getElementById('resolution').value.split('x');
-  return { w: +p[0], h: +p[1] };
+function syncCounts() {
+  var menu = document.getElementById('scenario').value === 'MENU12';
+  Array.prototype.forEach.call(document.getElementById('counts').children, function (c) {
+    c.disabled = menu;
+    c.classList.toggle('active', menu ? (+c.dataset.n === 12) : (+c.dataset.n === activeCount));
+  });
 }
+function currentCount() { return document.getElementById('scenario').value === 'MENU12' ? 12 : activeCount; }
+function currentResolution() { var p = document.getElementById('resolution').value.split('x'); return { w:+p[0], h:+p[1] }; }
 function applyResolution() {
   var r = currentResolution();
-  frame.setAttribute('width', r.w);
-  frame.setAttribute('height', r.h);
-  frame.style.width = r.w + 'px';
-  frame.style.height = r.h + 'px';
+  frame.setAttribute('width', r.w); frame.setAttribute('height', r.h);
+  frame.style.width = r.w + 'px'; frame.style.height = r.h + 'px';
   fitFrame();
 }
 function fitFrame() {
   var r = currentResolution();
-  if (document.getElementById('fit').value === '100') { frameWrap.style.transform = 'none'; frameWrap.style.width = r.w + 'px'; frameWrap.style.height = r.h + 'px'; return; }
-  var availW = stage.clientWidth - 32, availH = stage.clientHeight - 32;
-  var k = Math.min(1, availW / r.w, availH / r.h);
+  if (document.getElementById('fit').value === '100') { frameWrap.style.transform='none'; frameWrap.style.width=r.w+'px'; frameWrap.style.height=r.h+'px'; return; }
+  var k = Math.min(1, (stage.clientWidth - 32) / r.w, (stage.clientHeight - 32) / r.h);
   frameWrap.style.transform = 'scale(' + k + ')';
-  frameWrap.style.width = r.w + 'px';
-  frameWrap.style.height = r.h + 'px';
+  frameWrap.style.width = r.w + 'px'; frameWrap.style.height = r.h + 'px';
 }
-function measureEvalCode(profile, n) {
-  var data = JSON.stringify(makeData(profile, n));
+function measureEvalCode(data) {
   return '(function(){' +
-    'var data=' + data + ';' +
+    'var data=' + JSON.stringify(data) + ';' +
     'try{ latestComedorData={fecha:todayStr(),platos:data}; }catch(e){}' +
     'try{ if(window.MOCK_DB&&window.MOCK_DB["menu/comedor"]) window.MOCK_DB["menu/comedor"].platos=data; }catch(e){}' +
     'window.initDishPagination(data);' +
     'var mc=document.getElementById("main-col");' +
-    'var v=dishPagination.lastValidation; var types={}; var outside=0;' +
-    'if(v) v.problems.forEach(function(p){ types[p.type]=(types[p.type]||0)+1; if(p.type==="child-outside-row") outside++; });' +
-    'return { escala:+dishPagination.scale.toFixed(3), paginas:dishPagination.pages.map(function(p){return p.length;}),' +
-    ' ok:v?v.ok:null, problemas:types, fuera:outside, truncado:(types["text-clipped"]||0),' +
-    ' overflowH: mc.scrollWidth>mc.clientWidth, overflowV: mc.scrollHeight>mc.clientHeight,' +
-    ' filas: document.querySelectorAll("#main-col .dish-row").length };' +
+    'var v=dishPagination.lastValidation||{ok:false,problems:[{type:"sin-validacion"}]};' +
+    'var t={}; var fuera=0, clip=0, solape=0;' +
+    'v.problems.forEach(function(p){ t[p.type]=(t[p.type]||0)+1; if(p.type==="child-outside-row")fuera++; if(p.type==="text-clipped")clip++; if(p.type==="row-overlap"||p.type==="blocks-overlap")solape++; });' +
+    'return { escala:+dishPagination.scale.toFixed(3), reason:v.reason, sMax:v.sMax!==undefined?+v.sMax.toFixed(3):null, floor:v.floorScale!==undefined?+v.floorScale.toFixed(3):null, unfit:!!v.unfit,' +
+    ' paginas:dishPagination.pages.map(function(p){return p.length;}), ok:v.ok, problems:t, fuera:fuera, clip:clip, solape:solape,' +
+    ' overflowH: mc.scrollWidth>mc.clientWidth, overflowV: mc.scrollHeight>mc.clientHeight, filas:document.querySelectorAll("#main-col .dish-row").length };' +
   '})()';
 }
 function run() {
-  applyResolution();
-  var profile = document.getElementById('profile').value;
+  applyResolution(); syncCounts();
+  document.getElementById('desc').textContent = DESCRIPTIONS[document.getElementById('scenario').value] || '';
+  var sc = document.getElementById('scenario').value;
   setTimeout(function () {
-    var res = frame.contentWindow.eval(measureEvalCode(profile, activeCount));
-    showKpis(profile, activeCount, res);
+    var res = frame.contentWindow.eval(measureEvalCode(buildData(sc, currentCount())));
+    showKpis(sc, currentCount(), res);
   }, 350);
 }
-function showKpis(profile, n, r) {
-  var box = document.getElementById('kpis');
-  box.innerHTML =
-    row('Platos', n) +
-    row('Contenido', profile) +
-    row('Escala', r.escala) +
+function showKpis(sc, n, r) {
+  document.getElementById('kpis').innerHTML =
+    row('Platos', n) + row('Escala', r.escala) + row('Motivo', r.reason || '—') +
+    row('sMax / suelo', (r.sMax !== null ? r.sMax : '—') + ' / ' + (r.floor !== null ? r.floor : '—')) +
     row('Páginas', r.paginas.length + ' (' + r.paginas.join('+') + ')') +
-    row('Filas en página', r.filas) +
+    row('Platos por página', r.paginas.join(' | ')) +
+    row('Filas en página actual', r.filas) +
     row('Overflow horizontal', pill(!r.overflowH)) +
     row('Overflow vertical', pill(!r.overflowV)) +
+    row('Clipping', pill(r.clip === 0) + ' <span class="v">' + r.clip + '</span>') +
+    row('Solapamientos', pill(r.solape === 0) + ' <span class="v">' + r.solape + '</span>') +
     row('Elementos fuera', pill(r.fuera === 0) + ' <span class="v">' + r.fuera + '</span>') +
-    row('Texto truncado', pill(r.truncado === 0) + ' <span class="v">' + r.truncado + '</span>') +
     row('Validación', pill(!!r.ok));
-  var probs = Object.keys(r.problemas || {});
-  document.getElementById('problems').innerHTML = probs.length
-    ? probs.map(function (k) { return '#' + k + ' × ' + r.problemas[k]; }).join('<br>')
-    : 'Sin incidencias.';
+  var ks = Object.keys(r.problems || {});
+  document.getElementById('problems').innerHTML = ks.length ? ks.map(function (k) { return '#' + k + ' × ' + r.problems[k]; }).join('<br>') : 'Sin incidencias.';
 }
 function row(k, v) { return '<div>' + k + '</div><div class="v">' + v + '</div>'; }
 function pill(ok) { return '<span class="pill ' + (ok ? 'ok' : 'bad') + '">' + (ok ? 'OK' : 'FALLO') + '</span>'; }
 
 function runAll() {
   applyResolution();
-  var profile = document.getElementById('profile').value;
-  var counts = [1,2,4,6,8,10,12,16,20];
-  var rows = [], i = 0;
-  document.getElementById('matrix').innerHTML = '<h2 style="margin-top:16px">Matriz 1–20</h2><table id="mtx"><thead><tr><th>Nº</th><th>Escala</th><th>Páginas</th><th>Overflow</th><th>Fuera</th><th>Truncado</th><th>Estado</th></tr></thead><tbody></tbody></table>';
+  document.getElementById('desc').textContent = DESCRIPTIONS[document.getElementById('scenario').value] || '';
+  var sc = document.getElementById('scenario').value;
+  var counts = sc === 'MENU12' ? [12] : [1,2,4,6,8,10,12,16,20];
+  document.getElementById('matrix').innerHTML = '<h2 style="margin-top:14px">Matriz' + (sc === 'MENU12' ? ' (12 platos)' : ' 1–20') + '</h2><table id="mtx"><thead><tr><th>Nº</th><th>Escala</th><th>Motivo</th><th>Páginas</th><th>Reparto</th><th>Ov.</th><th>Clip</th><th>Solape</th><th>Fuera</th><th>Estado</th></tr></thead><tbody></tbody></table>';
+  var i = 0;
   function step() {
     if (i >= counts.length) return;
     var n = counts[i++];
-    var r = frame.contentWindow.eval(measureEvalCode(profile, n));
-    var tbody = document.querySelector('#mtx tbody');
+    var r = frame.contentWindow.eval(measureEvalCode(buildData(sc, n)));
     var tr = document.createElement('tr');
-    tr.innerHTML = '<td class="num">' + n + '</td><td class="num">' + r.escala + '</td><td class="num">' + r.paginas.join('+') + '</td>' +
-      '<td>' + ((r.overflowH || r.overflowV) ? 'SÍ' : 'no') + '</td><td class="num">' + r.fuera + '</td><td class="num">' + r.truncado + '</td>' +
-      '<td>' + pill(!!r.ok) + '</td>';
-    tbody.appendChild(tr);
-    setTimeout(step, 120);
+    tr.innerHTML = '<td class="num">' + n + '</td><td class="num">' + r.escala + '</td><td>' + (r.reason||'—') + '</td><td class="num">' + r.paginas.length + '</td><td class="num">' + r.paginas.join('+') + '</td>' +
+      '<td>' + ((r.overflowH||r.overflowV)?'SÍ':'no') + '</td><td class="num">' + r.clip + '</td><td class="num">' + r.solape + '</td><td class="num">' + r.fuera + '</td><td>' + pill(!!r.ok) + '</td>';
+    document.querySelector('#mtx tbody').appendChild(tr);
+    showKpis(sc, n, r);
+    setTimeout(step, 110);
+  }
+  setTimeout(step, 350);
+}
+
+function runResize() {
+  var sc = document.getElementById('scenario').value;
+  var seq = [[1920,1080],[2560,1440],[1280,720],[3840,2160],[1920,1080]];
+  document.getElementById('resizeBox').innerHTML = '<h2 style="margin-top:14px">Prueba de resize</h2><table id="rtx"><thead><tr><th>Paso</th><th>Escala</th><th>Páginas</th><th>Overflow</th><th>Clip</th><th>Motores</th><th>Estado</th></tr></thead><tbody></tbody></table>';
+  frame.contentWindow.eval('window.__engCount=0; if(!window.__engWrapped){window.__engWrapped=true; var O=LayoutEngine.Engine; LayoutEngine.Engine=function(o){window.__engCount++; return new O(o);}; }');
+  var i = 0;
+  function step() {
+    if (i >= seq.length) return;
+    var w = seq[i][0], h = seq[i][1]; var paso = i + 1; i++;
+    frame.setAttribute('width', w); frame.setAttribute('height', h);
+    frame.style.width = w + 'px'; frame.style.height = h + 'px';
+    document.getElementById('resolution').value = w + 'x' + h; fitFrame();
+    frame.contentWindow.eval('window.__engCount=0');
+    setTimeout(function () {
+      var r = frame.contentWindow.eval(measureEvalCode(buildData(sc, currentCount())));
+      var engines = frame.contentWindow.eval('window.__engCount');
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + paso + ' · ' + w + '×' + h + '</td><td class="num">' + r.escala + '</td><td class="num">' + r.paginas.length + '</td>' +
+        '<td>' + ((r.overflowH||r.overflowV)?'SÍ':'no') + '</td><td class="num">' + r.clip + '</td><td class="num">' + engines + '</td><td>' + pill(!!r.ok) + '</td>';
+      document.querySelector('#rtx tbody').appendChild(tr);
+      setTimeout(step, 450);
+    }, 600);
   }
   setTimeout(step, 350);
 }
 
 document.getElementById('run').onclick = run;
 document.getElementById('runAll').onclick = runAll;
-document.getElementById('profile').onchange = run;
+document.getElementById('runResize').onclick = runResize;
+document.getElementById('scenario').onchange = function () { syncCounts(); run(); };
 document.getElementById('resolution').onchange = run;
 document.getElementById('fit').onchange = fitFrame;
 window.addEventListener('resize', fitFrame);
-
-buildCountButtons();
+buildCountButtons(); syncCounts();
 frame.addEventListener('load', function () { setTimeout(run, 400); });
 applyResolution();
 </script>
