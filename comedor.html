@@ -481,10 +481,7 @@
     .cierre-kicker { position:relative; color:#7dd3fc; font-size:clamp(14px,calc(2vmin * var(--text-scale)),30px); font-weight:800; letter-spacing:.22em; text-transform:uppercase; }
     .cierre-title { position:relative; font-size:clamp(40px,12vmin,150px); font-weight:950; letter-spacing:.02em; text-transform:uppercase; line-height:1; margin:1.2vmin 0; text-shadow:0 5px 24px rgba(0,0,0,.3); white-space:nowrap; }
     .cierre-sub-en { position:relative; color:#cbd5e1; font-size:clamp(18px,calc(3.2vmin * var(--text-scale)),44px); font-style:italic; font-weight:600; letter-spacing:.12em; text-transform:uppercase; }
-    .cierre-message-es { position:relative; font-size:clamp(22px,calc(4.6vmin * var(--text-scale)),58px); font-weight:700; line-height:1.1; margin:1.6vmin auto .5vmin; max-width:1100px; }
-    .cierre-message-en { position:relative; color:#cbd5e1; font-size:clamp(16px,calc(3vmin * var(--text-scale)),40px); font-style:italic; line-height:1.15; }
     .cierre-clock-wrap { position:relative; display:inline-flex; flex-direction:column; gap:.4vmin; margin-top:2.4vmin; padding:1vmin 4vw 1.4vmin; border-top:1px solid rgba(125,211,252,.42); border-bottom:1px solid rgba(125,211,252,.42); }
-    .cierre-clock-label { color:#bae6fd; font-size:clamp(12px,calc(1.6vmin * var(--text-scale)),24px); font-weight:800; letter-spacing:.18em; text-transform:uppercase; }
     .cierre-clock { color:#fff; font-size:clamp(44px,12vmin,150px); font-weight:950; line-height:.95; letter-spacing:.06em; font-variant-numeric: tabular-nums; }
   </style>
 </head>
@@ -536,10 +533,7 @@
     <div class="cierre-kicker">Food Service DPT</div>
     <div class="cierre-title">COMEDOR CERRADO</div>
     <div class="cierre-sub-en">DINING ROOM CLOSED</div>
-    <div class="cierre-message-es" id="cierre-message-es">El comedor está cerrado</div>
-    <div class="cierre-message-en" id="cierre-message-en">The dining room is closed</div>
     <div class="cierre-clock-wrap">
-      <div class="cierre-clock-label">HORA ACTUAL · CURRENT TIME</div>
       <div class="cierre-clock" id="cierre-clock">--:--</div>
     </div>
   </div>
@@ -639,12 +633,6 @@ function refreshCierre() {
   const active = cierreActivo();
   overlay.classList.toggle('visible', active);
   if (!active) return;
-
-  // Mensajes configurables desde el panel de gestión
-  const msgEs = document.getElementById('cierre-message-es');
-  const msgEn = document.getElementById('cierre-message-en');
-  if (msgEs) msgEs.textContent = cierreConfig?.mensajeEs || 'El comedor está cerrado';
-  if (msgEn) msgEn.textContent = cierreConfig?.mensajeEn || 'The dining room is closed';
 
   updateCierreClock();
   // El cierre tiene prioridad sobre los avisos temporales de turno.
