@@ -1,6 +1,4 @@
-# Tests de layout
-
-Pruebas automatizadas del motor `layout-engine.js` sobre las pantallas de la preview.
+# Tests de layout — auditoría automatizada
 
 ## Ejecutar
 
@@ -8,29 +6,31 @@ Pruebas automatizadas del motor `layout-engine.js` sobre las pantallas de la pre
 node tests/run-layout-tests.mjs
 ```
 
-Requiere **Google Chrome** (configurable con `CHROME=/ruta/a/Google Chrome`).
-Salida: casos, fallos y detalle. Código de salida 0 si todo pasa, 1 si hay fallos.
+Requiere Google Chrome (`CHROME=/ruta/a/Google Chrome`). Salida: tabla TEST | RESULTADO | EVIDENCIA
+y código 0/1 (1 solo si hay FAIL).
 
-## Cobertura
+## Fixture único
 
-- **Páginas:** `comedor.html`, `comidas_especiales.html`
-- **Resoluciones:** 1280×720, 1920×1080, 2560×1440, 3840×2160
-- **Escenarios:** A platos normales · B nombres largos ES · C largos + traducciones largas ·
-  D muchos alérgenos · E muchas trazas · F largos + traducciones + alérgenos + trazas ·
-  G mezcla realista · H extremo · MENU12 menú extremo de 12 platos
-- **Cantidades:** 1, 2, 4, 6, 8, 10, 12, 16, 20
-- **Matriz de layout:** 584 casos
-- **Resize:** secuencia 1280 → 3840 → 2560 → 1920 → 1280 por pantalla, comprobando validez,
-  páginas correctas y que solo se reconstruye un motor por resize (sin bucles)
+Los datos de prueba viven en **`fixtures.js`** (compartido con `debug-layout.html`). El caso de
+referencia es **`MENU12_CANONICAL`**: 12 platos con nombres largos ES, traducciones largas, hasta 14
+alérgenos y 14 trazas, platos cortos y largos y uno extremadamente largo.
 
-## Comprobaciones
+## Secciones
 
-En `#main-col`, `.dish-row` y sus hijos: `scrollWidth <= clientWidth`,
-`scrollHeight <= clientHeight`, sin clipping, sin solape, sin elementos fuera, sin scroll de
-documento y `unfit = false`. En resize, además: páginas no vacías y número de reconstrucciones
-del motor acotado.
+1. **Matriz de layout** — 2 pantallas × 4 resoluciones × escenarios A–H + MENU12 × cantidades 1–20 (584 casos).
+2. **MENU12_CANONICAL** en carga limpia en las 4 resoluciones.
+3. **Resize determinista** — compara carga limpia vs tras 1920→2560→1280→3840→1920.
+4. **Cambios de contenido** sin recargar (1→4→8→12→20→MENU12→H→1) y reproducibilidad.
+5. **Caso imposible** — `unfit`, `reason=unfit-min-scale`, marcado explícito, sin bucle.
+6. **Comedor cerrado** — textos exactos, prohibidos ausentes, reloj vivo, sin carousel.
+7. **Overflow decorativo del cierre** — `scroll === client`.
+8. **Desayuno** — no usa layout-engine (se documenta) y smoke test de sus contenedores.
 
-## Notas
+## Assertions
 
-El runner arranca su propio servidor estático y su propio Chrome headless; sin dependencias ni
-build. Usa datos mock en memoria: **no contacta con Firebase**.
+`scrollWidth <= clientWidth`, `scrollHeight <= clientHeight`, elementos fuera del viewport,
+`boundingClientRect`, clipping real, texto truncado, altura de fila, iconos fuera de su contenedor,
+solape entre bloques y filas, páginas vacías, pérdida de platos y filas renderizadas === platos de
+la página. En resize: páginas válidas y reconstrucciones del motor acotadas.
+
+Sin dependencias ni build. Usa datos mock en memoria: **no contacta con Firebase**.

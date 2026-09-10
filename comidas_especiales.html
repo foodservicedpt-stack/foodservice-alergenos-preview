@@ -256,7 +256,15 @@ function initDishPagination(platos) {
 
   const report = engine.validate();
   dishPagination.lastValidation = report;
-  if (!report.ok) console.warn("[layout] Validación con incidencias:", report.problems.slice(0, 5));
+  window.__lastLayoutReport = report;
+  if (!report.ok) {
+    mainCol.setAttribute("data-layout-unfit", report.unfit ? "true" : "false");
+    mainCol.setAttribute("data-layout-problems", String(report.problems.length));
+    console.error("[layout] Validación FALLIDA" + (report.unfit ? " (unfit: no cabe ni a MIN_SCALE)" : "") + ":", report.problems.slice(0, 5));
+  } else {
+    mainCol.removeAttribute("data-layout-unfit");
+    mainCol.removeAttribute("data-layout-problems");
+  }
 }
 function renderPage(i) {
   const mainCol = document.getElementById('main-col');

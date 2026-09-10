@@ -1,5 +1,10 @@
 # VALIDACIÓN VISUAL DE LA PREVIEW — informe
 
+> **Nota (auditoría final).** Las cifras de menús de 12 platos de este informe corresponden a
+> **tres datasets distintos** (verificación del defecto, tabla del menú y test de resize), por lo
+> que no eran comparables entre sí. La traza completa y el resultado unificado con el fixture único
+> `MENU12_CANONICAL` están en **`AUDIT_FINAL_REPORT.md` §1**.
+
 **Fecha:** 2026-09-10
 **Alcance:** solo la preview. **No se ha integrado nada ni tocado producción.**
 

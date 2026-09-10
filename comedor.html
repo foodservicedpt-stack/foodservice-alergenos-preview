@@ -466,7 +466,11 @@
       padding: 3vw;
       opacity: 0; visibility: hidden;
       transition: opacity .45s ease, visibility .45s;
-      background: radial-gradient(circle at 50% 0%, #263f67 0%, #101d34 46%, #070d19 100%);
+      /* Halo inferior como CAPA DE FONDO (no como pseudo-elemento): mismo
+         aspecto, pero no puede generar scrollWidth/scrollHeight. */
+      background:
+        radial-gradient(ellipse 75% 42% at 50% 118%, rgba(56,189,248,.22), transparent 65%),
+        radial-gradient(circle at 50% 0%, #263f67 0%, #101d34 46%, #070d19 100%);
       color: #fff; overflow: hidden;
     }
     #cierre-overlay.visible { opacity: 1; visibility: visible; }
@@ -476,7 +480,6 @@
       text-align: center;
       position: relative;
     }
-    .cierre-card::before { content:''; position:absolute; inset:auto -10% -70% -10%; height:55%; background:radial-gradient(ellipse,rgba(56,189,248,.22),transparent 65%); pointer-events:none; }
     .cierre-logo { position:relative; height:clamp(60px,8vmin,150px); object-fit:contain; filter:brightness(1.2) drop-shadow(0 10px 16px rgba(0,0,0,.35)); margin-bottom:1.6vmin; }
     .cierre-kicker { position:relative; color:#7dd3fc; font-size:clamp(14px,calc(2vmin * var(--text-scale)),30px); font-weight:800; letter-spacing:.22em; text-transform:uppercase; }
     .cierre-title { position:relative; font-size:clamp(40px,12vmin,150px); font-weight:950; letter-spacing:.02em; text-transform:uppercase; line-height:1; margin:1.2vmin 0; text-shadow:0 5px 24px rgba(0,0,0,.3); white-space:nowrap; }
@@ -1170,7 +1173,17 @@ function initDishPagination(platos) {
   // Validación explícita del estado final.
   const report = engine.validate();
   dishPagination.lastValidation = report;
-  if (!report.ok) console.warn("[layout] Validación con incidencias:", report.problems.slice(0, 5));
+  window.__lastLayoutReport = report;
+  if (!report.ok) {
+    // Un layout no válido NUNCA debe quedar silencioso: se marca en el DOM
+    // (atributos legibles por tests) y se registra como error.
+    mainCol.setAttribute("data-layout-unfit", report.unfit ? "true" : "false");
+    mainCol.setAttribute("data-layout-problems", String(report.problems.length));
+    console.error("[layout] Validación FALLIDA" + (report.unfit ? " (unfit: no cabe ni a MIN_SCALE)" : "") + ":", report.problems.slice(0, 5));
+  } else {
+    mainCol.removeAttribute("data-layout-unfit");
+    mainCol.removeAttribute("data-layout-problems");
+  }
 }
 // ── RE-CALCULAR al cambiar ventana ──
 function recomputeDishPagination() {
