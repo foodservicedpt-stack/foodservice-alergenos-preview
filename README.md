@@ -62,7 +62,7 @@ No requiere build ni dependencias.
 
 - [x] **Fase 1** — Auditoría de arquitectura → `ARCHITECTURE_AUDIT.md`
 - [x] **Fase 2** — Copia funcional aislada de la app actual (sin cambios de layout)
-- [ ] **Fase 3** — Nuevo motor de layout determinista (medición + paginación + escala + validación)
+- [x] **Fase 3** — Nuevo motor de layout determinista (`layout-engine.js`) en comedor y comidas especiales
 - [ ] **Fase 4** — Estado "Comedor cerrado" limpio (sin textos adicionales)
 - [ ] **Fase 5** — `debug-layout.html`
 - [ ] **Fase 6** — Tests automatizados (1280×720, 1920×1080, 2560×1440, 3840×2160)

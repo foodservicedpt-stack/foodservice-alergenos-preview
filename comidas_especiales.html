@@ -11,10 +11,12 @@
   <script src="./allergen-data.js"></script>
   <script src="./utils.js"></script>
   <script src="./translation.js"></script>
+  <script src="./layout-engine.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --text-scale: 1;
+      --page-scale: 1;
       --text-sm:    clamp(20px, calc(3.4vmin * var(--text-scale)), 5.5vmin);
       --text-base:  clamp(28px, calc(4.4vmin * var(--text-scale)), 8vmin);
       --icon-base:  clamp(46px, calc(5.8vmin * var(--text-scale)), 10vmin);
@@ -49,31 +51,31 @@
     .dish-row {
       background: #ffffff; border-radius: 18px; padding: 0.5vw 1.1vw;
       display: flex; align-items: center; box-shadow: 0 2px 14px rgba(0,0,0,0.07);
-      flex: 1 1 0; min-height: 0; border-left: 5px solid transparent; overflow: hidden; gap: 1vw;
+      flex: 0 0 auto; border-left: 5px solid transparent; overflow: hidden; gap: 1vw;
     }
     .dish-row:nth-child(odd)  { border-left-color: #3b82f6; }
     .dish-row:nth-child(even) { border-left-color: #10b981; }
     .dish-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3vw; }
-    .dish-name-es { font-size: var(--text-base); font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.08; white-space: normal; overflow: hidden; overflow-wrap: break-word; word-break: break-word; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+    .dish-name-es { font-size: calc(var(--text-base) * var(--page-scale)); font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.08; white-space: normal; overflow-wrap: break-word; word-break: break-word; }
     .dish-name-en-line { display: flex; align-items: center; gap: 1vmin; min-width: 0; }
     .dish-name-en-wrap { flex: 0 1 auto; min-width: 0; max-width: 100%; }
-    .dish-name-en { font-size: var(--text-sm); color: #334155; font-style: italic; line-height: 1.1; white-space: normal; overflow: hidden; overflow-wrap: break-word; word-break: break-word; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+    .dish-name-en { font-size: calc(var(--text-sm) * var(--page-scale)); color: #334155; font-style: italic; line-height: 1.1; white-space: normal; overflow-wrap: break-word; word-break: break-word; }
     .dish-allergens { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 0.15vw; flex-shrink: 0; margin-left: auto; }
     .allergen-section { display: flex; flex-direction: row; align-items: center; gap: 0.25vw; }
-    .section-label { font-size: clamp(18px, calc(2.3vmin * var(--text-scale)), 4.5vmin); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.3vmin 0.6vmin; border-radius: 0.4vmin; line-height: 1.1; white-space: nowrap; }
+    .section-label { font-size: calc(clamp(18px, calc(2.3vmin * var(--text-scale)), 4.5vmin) * var(--page-scale)); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.3vmin 0.6vmin; border-radius: 0.4vmin; line-height: 1.1; white-space: nowrap; }
     .contain-label { color: #1e40af; background: #dbeafe; }
     .trace-label { color: #92400e; background: #fef3c7; border: 1px solid #fcd34d; }
     .allergen-grid { display: flex; flex-wrap: wrap; gap: 0.7vmin; justify-content: flex-end; }
-    .alg-icon-wrap { width: var(--icon-base); height: var(--icon-base); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .alg-icon-wrap { width: calc(var(--icon-base) * var(--page-scale)); height: calc(var(--icon-base) * var(--page-scale)); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .alg-icon-wrap img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
     .alg-icon-wrap.trace-icon { opacity: 0.85; }
-    .no-allergen { background: #ecfdf5; border: 2px solid #6ee7b7; border-radius: 10px; padding: 0.5vmin 0.9vmin; color: #065f46; font-weight: 800; display: inline-flex; align-items: center; gap: 0.6vmin; white-space: nowrap; font-size: clamp(15px, calc(1.8vmin * var(--text-scale)), 3.4vmin); }
-    .no-allergen .shield-ok svg { width: clamp(24px, 3vmin, 5vmin); height: clamp(24px, 3vmin, 5vmin); }
+    .no-allergen { background: #ecfdf5; border: 2px solid #6ee7b7; border-radius: 10px; padding: 0.5vmin 0.9vmin; color: #065f46; font-weight: 800; display: inline-flex; align-items: center; gap: 0.6vmin; white-space: nowrap; font-size: calc(clamp(15px, calc(1.8vmin * var(--text-scale)), 3.4vmin) * var(--page-scale)); }
+    .no-allergen .shield-ok svg { width: calc(clamp(24px, 3vmin, 5vmin) * var(--page-scale)); height: calc(clamp(24px, 3vmin, 5vmin) * var(--page-scale)); }
     .no-allergen-txt { display: flex; flex-direction: column; line-height: 1.15; }
-    .no-allergen-txt .es { font-size: clamp(17px, calc(2vmin * var(--text-scale)), 3.8vmin); white-space: nowrap; }
-    .no-allergen-txt .en { font-style: italic; font-size: clamp(13px, calc(1.5vmin * var(--text-scale)), 3vmin); opacity: 0.8; font-weight: 600; white-space: nowrap; }
-    .sin-gluten-badge { display: inline-flex; align-items: center; gap: 0.4vmin; padding: 0.3vmin 0.6vmin; border-radius: 6px; border: 1px solid #86efac; background: #f0fdf4; color: #166534; font-size: clamp(11px, calc(1.8vmin * var(--text-scale)), 3.2vmin); line-height: 1.05; flex-shrink: 0; }
-    .sin-gluten-icon { position: relative; width: clamp(22px, calc(2.8vmin * var(--text-scale)), 5.5vmin); height: clamp(22px, calc(2.8vmin * var(--text-scale)), 5.5vmin); flex-shrink: 0; display: inline-flex; }
+    .no-allergen-txt .es { font-size: calc(clamp(17px, calc(2vmin * var(--text-scale)), 3.8vmin) * var(--page-scale)); white-space: nowrap; }
+    .no-allergen-txt .en { font-style: italic; font-size: calc(clamp(13px, calc(1.5vmin * var(--text-scale)), 3vmin) * var(--page-scale)); opacity: 0.8; font-weight: 600; white-space: nowrap; }
+    .sin-gluten-badge { display: inline-flex; align-items: center; gap: 0.4vmin; padding: 0.3vmin 0.6vmin; border-radius: 6px; border: 1px solid #86efac; background: #f0fdf4; color: #166534; font-size: calc(clamp(11px, calc(1.8vmin * var(--text-scale)), 3.2vmin) * var(--page-scale)); line-height: 1.05; flex-shrink: 0; }
+    .sin-gluten-icon { position: relative; width: calc(clamp(22px, calc(2.8vmin * var(--text-scale)), 5.5vmin) * var(--page-scale)); height: calc(clamp(22px, calc(2.8vmin * var(--text-scale)), 5.5vmin) * var(--page-scale)); flex-shrink: 0; display: inline-flex; }
     .sin-gluten-icon img { width: 100%; height: 100%; object-fit: contain; }
     .sin-gluten-icon svg { position: absolute; inset: 0; width: 100%; height: 100%; }
     .sin-gluten-text { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
@@ -198,51 +200,68 @@ function showNoData(empty) {
   if (dots) mainCol.appendChild(dots);
 }
 
+// ── MOTOR DE LAYOUT (compartido con comedor.html) ──
+const LAYOUT_MIN_SCALE = 0.50;
+const LAYOUT_MAX_SCALE = 1.40;
+const LAYOUT_SAFETY_MARGIN = 0.985;
+
+function makeDishRowEl(plato) {
+  const tpl = document.createElement("template");
+  tpl.innerHTML = createDishRow(plato).trim();
+  return tpl.content.firstElementChild;
+}
+function applyPageScale(scale) {
+  const mainCol = document.getElementById("main-col");
+  if (mainCol) mainCol.style.setProperty("--page-scale", String(scale));
+}
+function reservePaginationHeight() {
+  const pagEl = document.getElementById("dish-pagination");
+  if (!pagEl) return 0;
+  pagEl.style.display = "flex";
+  if (!pagEl.children.length) pagEl.innerHTML = '<button class="page-dot"></button>';
+  return pagEl.getBoundingClientRect().height;
+}
+
 function initDishPagination(platos) {
-  const mainCol = document.getElementById('main-col');
-  mainCol.querySelectorAll('.dish-row, .no-data').forEach(el => el.remove());
-  platos.forEach(p => mainCol.insertAdjacentHTML('beforeend', createDishRow(p)));
-  const hasOverflow = mainCol.scrollHeight > mainCol.clientHeight;
-  if (!hasOverflow) {
-    dishPagination.pages = [platos]; dishPagination.current = 0; dishPagination.rotationEnabled = false;
-    document.getElementById('dish-pagination').style.display = 'none'; stopRotation(); fitDishText(); return;
-  }
-  const colH = mainCol.clientHeight;
-  const cs = getComputedStyle(mainCol);
-  const gap = parseFloat(cs.gap || '0') || 0;
-  const padTop = parseFloat(cs.paddingTop || '0') || 0;
-  const usableH = Math.max(80, colH - padTop);
-  let rowH = measureAvg(platos);
-  const maxRows = Math.max(1, Math.floor(usableH / (rowH + gap)));
-  const pages = [];
-  for (let i = 0; i < platos.length; i += maxRows) pages.push(platos.slice(i, i + maxRows));
-  dishPagination.pages = pages; dishPagination.current = 0; dishPagination.rotationEnabled = pages.length > 1;
-  if (pages.length > 0) renderPage(0);
-  const container = document.getElementById('dish-pagination');
-  if (dishPagination.rotationEnabled) { setDots(); startRotation(); } else container.style.display = 'none';
-}
+  const mainCol = document.getElementById("main-col");
+  if (!mainCol) return;
+  platos = platos || [];
+  const pagEl = document.getElementById("dish-pagination");
+  const reservedBottom = reservePaginationHeight();
 
-function measureAvg(platos) {
-  const mainCol = document.getElementById('main-col');
-  const probe = document.createElement('div');
-  probe.style.cssText = 'position:absolute;left:-10000px;top:0;width:' + mainCol.clientWidth + 'px;visibility:hidden;';
-  platos.forEach(p => probe.insertAdjacentHTML('beforeend', createDishRow(p)));
-  document.body.appendChild(probe);
-  const hs = [];
-  probe.querySelectorAll('.dish-row').forEach(row => {
-    const c = row.querySelector('.dish-content');
-    const a = row.querySelector('.dish-allergens');
-    hs.push(Math.max(c ? c.scrollHeight : 0, a ? a.scrollHeight : 0));
+  const engine = new LayoutEngine.Engine({
+    container: mainCol,
+    renderRow: makeDishRowEl,
+    MIN_SCALE: LAYOUT_MIN_SCALE,
+    MAX_SCALE: LAYOUT_MAX_SCALE,
+    SAFETY_MARGIN: LAYOUT_SAFETY_MARGIN,
+    reservedBottom: reservedBottom
   });
-  document.body.removeChild(probe);
-  return hs.length ? (hs.reduce((x,y)=>x+y,0) / hs.length) : 120;
-}
 
+  const result = engine.layout(platos);
+  dishPagination.engine = engine;
+  dishPagination.pages = result.pages;
+  dishPagination.current = 0;
+  dishPagination.scale = result.scale;
+  dishPagination.rotationEnabled = result.pages.length > 1;
+  applyPageScale(result.scale);
+
+  if (dishPagination.pages.length === 0) {
+    mainCol.querySelectorAll('.dish-row, .no-data').forEach(el => el.remove());
+  }
+  if (dishPagination.pages.length > 0) renderPage(0);
+  if (dishPagination.rotationEnabled) { setDots(); startRotation(); }
+  else { if (pagEl) { pagEl.innerHTML = ""; pagEl.style.display = "none"; } stopRotation(); }
+
+  const report = engine.validate();
+  dishPagination.lastValidation = report;
+  if (!report.ok) console.warn("[layout] Validación con incidencias:", report.problems.slice(0, 5));
+}
 function renderPage(i) {
   const mainCol = document.getElementById('main-col');
   mainCol.querySelectorAll('.dish-row, .no-data').forEach(el => el.remove());
   (dishPagination.pages[i] || []).forEach(p => mainCol.insertAdjacentHTML('beforeend', createDishRow(p)));
-  setDots(); fitDishText();
+  setDots();
 }
 
 function setDots() {
@@ -265,21 +284,6 @@ function startRotation() {
   }, dishPagination.interval);
 }
 function stopRotation() { if (dishPagination.timer) { clearInterval(dishPagination.timer); dishPagination.timer = null; } }
-
-function fitDishText() {
-  document.querySelectorAll('#main-col .dish-row').forEach(row => {
-    const content = row.querySelector('.dish-content');
-    const nameEl = row.querySelector('.dish-name-es');
-    if (!content || !nameEl) return;
-    const h = row.clientHeight; if (h <= 0) return;
-    const enEl = row.querySelector('.dish-name-en');
-    const over = () => content.scrollHeight > h + 2;
-    if (!over()) return;
-    let fs = parseFloat(getComputedStyle(nameEl).fontSize) || 30;
-    const min = Math.max(12, Math.round(fs * 0.5));
-    while (over() && fs > min) { fs -= 1; nameEl.style.fontSize = fs + 'px'; if (enEl) enEl.style.fontSize = Math.max(11, Math.round(fs * 0.72)) + 'px'; }
-  });
-}
 
 // ═══════════ RELOJ ═══════════
 function updateClock() {

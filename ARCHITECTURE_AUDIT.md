@@ -244,6 +244,15 @@ Medición (producción y árbol de trabajo, todas las resoluciones):
 | 2560×1440 | 8 | `[]` | `false` | 8 / 8 | 64.8 px |
 | 3840×2160 | 8 | `[]` | `false` | 8 / 8 | 97.2 px |
 
+> **Nota de precisión (2026-09-10, Fase 3).** La columna `pages` de la tabla anterior procedía de
+> `window.dishPagination`, pero `dishPagination` se declara con `let` en ámbito léxico global y **no**
+> existe como `window.dishPagination`; esa columna devolvía `[]` por el fallo de la sonda, no por el
+> motor. La causa raíz #1 se sostiene con las demás columnas, que sí se midieron directamente sobre el
+> DOM: `colOverflowV` siempre `false` (el contenedor nunca desborda) y todas las filas con hijos fuera
+> de su caja. Es decir: la guarda `mainCol.scrollHeight > mainCol.clientHeight` era siempre falsa y la
+> paginación no se ejecutaba. Corregido y verificado en la Fase 3 midiendo `dishPagination` (sin
+> `window.`).
+
 ### Causa raíz #2 — Recorte de texto por `line-clamp` (violación directa de la regla absoluta)
 
 - `.dish-name-es`: `-webkit-line-clamp: 2` (`comedor.html:102`).
