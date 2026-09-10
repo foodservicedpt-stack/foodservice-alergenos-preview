@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Service DPT — Gestión de Desayuno</title>
+  <!-- PREVIEW: SIN SDK de Firebase y SIN credenciales de produccion.
+       Todos los datos vienen de mock-data.js (memoria local del navegador). -->
+  <script src="./mock-data.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script src="./allergen-data.js"></script>
+  <script src="./utils.js"></script>
+  <script src="./translation.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --amber: #b45309;
+      --amber-light: #f59e0b;
+      --border: #e2e8f0;
+      --muted: #64748b;
+      --text: #0f172a;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f1f5f9;
+      margin: 0; padding: 20px;
+      color: #0f172a;
+    }
+
+    /* ── CONTROL PANEL (no imprime) ── */
+    .control-panel {
+      background: white; border-radius: 14px;
+      padding: 18px 24px; margin-bottom: 20px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    }
+    .ctrl-logo { height: 48px; object-fit: contain; }
+    .ctrl-title { font-size: 1.1rem; font-weight: 800; color: #92400e; letter-spacing: 1px; }
+    .ctrl-subtitle { font-size: 0.82rem; color: #64748b; margin-top: 2px; }
+    .ctrl-sep { flex: 1; }
+    .ctrl-home {
+      padding: 9px 16px; background: #f1f5f9; color: #475569;
+      border: 2px solid #e2e8f0; border-radius: 9px; text-decoration: none;
+      font-size: 0.85rem; font-weight: 700; transition: all 0.15s;
+    }
+    .ctrl-home:hover { background: #e2e8f0; }
+    .ctrl-date-label { font-size: 0.82rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ctrl-date-input {
+      padding: 9px 14px; border: 2px solid #e2e8f0; border-radius: 9px;
+      font-size: 0.9rem; color: #0f172a; outline: none;
+    }
+    .ctrl-date-input:focus { border-color: var(--amber-light); }
+    .btn-reload {
+      padding: 10px 16px; background: #fffbeb; color: #92400e;
+      border: 2px solid #fcd34d; border-radius: 9px;
+      font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-reload:hover { background: #fef3c7; }
+    .btn-publish {
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #b45309, #f59e0b);
+      color: white; border: none; border-radius: 10px;
+      font-size: 0.9rem; font-weight: 800; cursor: pointer;
+      letter-spacing: 0.5px; text-transform: uppercase;
+      box-shadow: 0 4px 12px rgba(245,158,11,0.35); transition: all 0.2s;
+    }
+    .btn-publish:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(245,158,11,0.45); }
+    .btn-publish:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-print {
+      padding: 12px 22px;
+      background: linear-gradient(135deg, #0b1f3a, #1d4ed8);
+      color: white; border: none; border-radius: 10px;
+      font-size: 0.9rem; font-weight: 700; cursor: pointer;
+      letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(29,78,216,0.35); transition: all 0.2s;
+    }
+    .btn-print:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(29,78,216,0.4); }
+    .ctrl-status {
+      font-size: 0.8rem; color: #64748b;
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 50px; padding: 8px 16px; font-weight: 700;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .status-dot { width: 9px; height: 9px; border-radius: 50%; background: #10b981; }
+
+    .firebase-warn {
+      background: #fffbeb; border: 1px solid #fcd34d; border-radius: 10px;
+      padding: 12px 18px; margin-bottom: 18px; font-size: 0.85rem; color: #92400e; display: none;
+    }
+    .firebase-warn.visible { display: block; }
+
+    /* ═══════════ EDITOR (no imprime) ═══════════ */
+    .editor { margin-bottom: 26px; }
+    .editor-intro {
+      background: linear-gradient(135deg, #78350f, #b45309);
+      border-radius: 14px; padding: 18px 24px; margin-bottom: 20px;
+      color: white; display: flex; align-items: center; gap: 16px;
+    }
+    .editor-intro-icon { font-size: 2.4rem; flex-shrink: 0; }
+    .editor-intro h3 { margin: 0 0 4px; font-size: 1.1rem; font-weight: 800; }
+    .editor-intro p  { margin: 0; font-size: 0.84rem; opacity: 0.85; line-height: 1.5; }
+
+    .dish-card {
+      background: white; border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08); margin-bottom: 18px;
+      border: 2px solid transparent; transition: border-color 0.2s, box-shadow 0.2s; overflow: hidden;
+    }
+    .dish-card:hover { border-color: #fcd34d; box-shadow: 0 8px 24px rgba(245,158,11,0.12); }
+    .dish-header {
+      background: linear-gradient(90deg, #78350f, #b45309);
+      padding: 14px 20px; display: flex; align-items: center; gap: 14px;
+    }
+    .dish-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(255,255,255,0.2); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; font-weight: 800; flex-shrink: 0;
+    }
+    .dish-names-row { display: flex; gap: 14px; flex: 1; flex-wrap: wrap; }
+    .input-es, .input-en {
+      flex: 1; min-width: 200px; padding: 10px 14px;
+      border: 2px solid rgba(255,255,255,0.2); border-radius: 10px;
+      background: rgba(255,255,255,0.12); color: white; font-size: 1rem; outline: none;
+      transition: border 0.2s; font-weight: 600;
+    }
+    .input-es::placeholder, .input-en::placeholder { color: rgba(255,255,255,0.5); font-weight: 400; }
+    .input-es:focus, .input-en:focus { border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.18); }
+    .input-en { font-style: italic; font-weight: 400; }
+    .translate-btn {
+      padding: 10px 14px; border-radius: 10px;
+      background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.25);
+      color: white; cursor: pointer; font-size: 1rem; transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+    }
+    .translate-btn:hover { background: rgba(255,255,255,0.28); }
+    .btn-remove-dish {
+      padding: 8px 14px; border-radius: 8px;
+      background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.45);
+      color: #fecaca; cursor: pointer; font-size: 0.85rem; font-weight: 700;
+      transition: all 0.15s; flex-shrink: 0;
+    }
+    .btn-remove-dish:hover { background: rgba(239,68,68,0.4); }
+
+
+    .allergen-body { padding: 18px 20px; }
+    .alg-section { margin-bottom: 14px; }
+    .alg-section:last-child { margin-bottom: 0; }
+    .alg-label { font-size: 0.75rem; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+    .alg-label span.type-contains { color: #b45309; }
+    .alg-label span.type-traces   { color: #d97706; }
+    .alg-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    @media (max-width: 900px) { .alg-grid { grid-template-columns: repeat(4, 1fr); } }
+    .alg-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 8px 4px 6px; border: 2px solid #e2e8f0; border-radius: 10px;
+      background: #f8fafc; cursor: pointer; transition: all 0.15s;
+      font-size: 9px; font-weight: 700; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: 0.3px; user-select: none;
+    }
+    .alg-btn:hover { border-color: var(--clr,#f59e0b); transform: translateY(-1px); background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .alg-btn.active { color: white; border-color: var(--clr,#f59e0b); background: var(--clr,#f59e0b); }
+    .alg-btn.traces-mode { border-style: dashed; }
+    .alg-btn.traces-mode.active { background: transparent; color: var(--clr,#f59e0b); border-style: dashed; }
+    .alg-icon-ring {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: white; border: 2px solid var(--clr,#e2e8f0);
+      display: flex; align-items: center; justify-content: center; overflow: hidden; transition: all 0.15s;
+    }
+    .alg-btn.active .alg-icon-ring { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.5); }
+    .alg-btn.traces-mode.active .alg-icon-ring { background: white; }
+    .alg-icon-ring img { width: 100%; height: 100%; object-fit: contain; filter: grayscale(0.6); transition: filter 0.15s; }
+    .alg-btn.active .alg-icon-ring img, .alg-btn.traces-mode.active .alg-icon-ring img { filter: none; }
+    .alg-name { line-height: 1.1; text-align: center; font-size: 8px; }
+
+    .btn-add-dish {
+      display: flex; align-items: center; gap: 10px;
+      padding: 16px 28px; background: white; border: 2px dashed #fcd34d;
+      border-radius: 14px; color: #b45309;
+      font-size: 0.95rem; font-weight: 700; cursor: pointer;
+      width: 100%; justify-content: center; transition: all 0.2s;
+    }
+    .btn-add-dish:hover { background: #fffbeb; border-color: #f59e0b; }
+    .btn-add-dish .plus { font-size: 1.4rem; }
+
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+
+    .preview-heading {
+      font-size: 0.85rem; font-weight: 800; color: #64748b; text-transform: uppercase;
+      letter-spacing: 1.5px; margin: 8px 0 12px; display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed; bottom: 30px; right: 30px; z-index: 9999;
+      padding: 14px 24px; border-radius: 12px; font-size: 0.9rem; font-weight: 700;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      transform: translateY(80px); opacity: 0; transition: all 0.3s; pointer-events: none;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
+    .toast.error   { background: #7f1d1d; color: #fca5a5; border: 1px solid #dc2626; }
+    .toast.info    { background: #78350f; color: #fde68a; border: 1px solid #d97706; }
+
+    /* ── PRINT AREA (A4 LANDSCAPE) ── */
+    #printArea {
+      background: #f8f9fa;
+      padding: 12mm 16mm;
+      border-radius: 12px;
+      box-shadow: 0 0 16px rgba(0,0,0,0.1);
+      width: 297mm;
+      height: 210mm;
+      max-height: 210mm;
+      box-sizing: border-box;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+    .print-header {
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 3px solid #1e3a5f;
+      padding-bottom: 10px; margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+    .print-header-left { display: flex; align-items: center; gap: 18px; }
+    .print-logo { height: 68px; object-fit: contain; }
+    .print-title { font-size: 2rem; font-weight: 900; color: #0f172a; letter-spacing: 1px; line-height: 1; }
+    .print-subtitle { font-size: 0.9rem; color: #64748b; font-style: italic; margin-top: 2px; }
+    .print-date-badge {
+      display: flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      color: white; border-radius: 50px;
+      padding: 8px 18px; font-weight: 700; font-size: 1rem;
+      box-shadow: 0 4px 12px rgba(79,172,254,0.35);
+      white-space: nowrap;
+    }
+    .print-layout { display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden; }
+    .print-main { flex: 7.5; display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; }
+    .print-sidebar { flex: 2.5; border-left: 2px solid #e2e8f0; padding-left: 16px; display: flex; flex-direction: column; overflow: hidden; }
+    .print-dish-row {
+      background: white; border-radius: 8px; border: 1px solid #e2e8f0;
+      padding: 10px 18px; display: flex; justify-content: space-between; align-items: center;
+      flex: 1; min-height: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .print-dish-info { flex: 1; padding-right: 16px; }
+    .print-dish-es { font-size: 1.45rem; font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: -0.3px; line-height: 1.1; }
+    .print-dish-en { font-size: 0.92rem; font-style: italic; color: #64748b; margin-top: 2px; }
+    .print-allergens { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+    .print-alg-row { display: flex; align-items: center; gap: 5px; }
+    .print-icon-wrap {
+      width: 42px; height: 42px;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .print-icon-wrap img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+    .print-icon-trace { opacity: 0.8; }
+    .trace-tag {
+      font-size: 9px; font-weight: 800; color: #92400e;
+      background: #fef3c7; border: 1.5px solid #fcd34d;
+      border-radius: 50px; padding: 2px 7px; letter-spacing: 0.3px;
+    }
+    .no-allergen-print {
+      background: #ecfdf5; border: 1.5px solid #6ee7b7;
+      border-radius: 6px; padding: 8px 16px; color: #065f46;
+      font-weight: 800; font-size: 0.85rem;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .no-allergen-print .en { font-style: italic; font-size: 0.78rem; opacity: 0.7; }
+    .print-legend-title {
+      font-size: 0.75rem; font-weight: 800; color: #64748b;
+      text-transform: uppercase; letter-spacing: 1.5px;
+      border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 8px;
+    }
+    .print-legend-title .en { display: block; font-style: italic; font-weight: 400; letter-spacing: 0; text-transform: none; font-size: 0.7rem; }
+    .print-legend-list { display: flex; flex-direction: column; justify-content: space-between; flex: 1; }
+    .print-legend-item { display: flex; align-items: center; gap: 8px; }
+    .print-legend-circle { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .print-legend-circle img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+    .print-legend-es { font-size: 0.72rem; font-weight: 700; color: #1e293b; text-transform: uppercase; line-height: 1.1; }
+    .print-legend-en { font-size: 0.62rem; font-style: italic; color: #94a3b8; line-height: 1.1; }
+    .print-traces-info { border-top: 1px dashed #e2e8f0; margin-top: 6px; padding-top: 6px; font-size: 0.65rem; color: #92400e; }
+    .print-no-data { flex: 1; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 1rem; flex-direction: column; gap: 10px; }
+
+    /* ── PRINT RULES ── */
+    @media print {
+      @page { size: A4 landscape; margin: 0; }
+      html, body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .control-panel, .editor, .firebase-warn, .preview-heading, .toast { display: none !important; }
+      #printArea {
+        width: 297mm !important; height: 210mm !important; max-height: 210mm !important;
+        margin: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+        padding: 10mm 14mm !important; box-sizing: border-box !important;
+        overflow: hidden !important; background: #f8f9fa !important;
+      }
+      .print-date-badge { background: linear-gradient(135deg, #4facfe, #00f2fe) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .print-dish-row { page-break-inside: avoid !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════ CONTROL PANEL ══════════════════════ -->
+<div class="control-panel">
+  <img src="./img/Encabezado.png" alt="Food Service DPT" class="ctrl-logo" onerror="this.style.display='none'">
+  <div>
+    <div class="ctrl-title">FOOD SERVICE DPT</div>
+    <div class="ctrl-subtitle">Gestión de Desayuno · Breakfast Manager</div>
+  </div>
+  <div class="ctrl-sep"></div>
+  <a href="./index.html" class="ctrl-home">🏠 Inicio</a>
+  <span class="ctrl-date-label">📅 Fecha:</span>
+  <input type="date" class="ctrl-date-input" id="date-input" onchange="onDateChange()">
+  <button class="btn-reload" onclick="reloadFromFirebase()">🔄 Recargar</button>
+  <div class="ctrl-status" id="ctrl-status"><span class="status-dot"></span><span id="ctrl-status-text">Cargando...</span></div>
+  <button class="btn-publish" id="btn-publish" onclick="publishDesayuno()">💾 Guardar desayuno</button>
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimir / PDF</button>
+</div>
+
+<div class="firebase-warn" id="firebase-warn">
+  ⚠️ <strong>Firebase no configurado.</strong> Edita el archivo <code>firebase-config.js</code>. Consulta el <strong>README.md</strong>.
+</div>
+
+<!-- ══════════════════════ EDITOR ══════════════════════ -->
+<div class="editor" id="editor">
+  <div class="editor-intro">
+    <div class="editor-intro-icon">☕</div>
+    <div>
+      <h3>Productos del desayuno</h3>
+      <p>Añade los productos del desayuno y marca sus alérgenos. Pulsa <strong>Guardar desayuno</strong> para publicarlo. Cada día empieza en blanco automáticamente (los alérgenos se reinician solos).</p>
+    </div>
+  </div>
+  <div id="dish-list"></div>
+  <button class="btn-add-dish" onclick="addDish()">
+    <span class="plus">＋</span> Añadir producto
+  </button>
+</div>
+
+<!-- ══════════════════════ PREVIEW / PRINT ══════════════════════ -->
+<div class="preview-heading">👁️ Vista previa de impresión (A4 horizontal)</div>
+
+<div id="printArea">
+  <div class="print-header">
+    <div class="print-header-left">
+      <img src="./img/Encabezado.png" alt="Food Service DPT" class="print-logo" onerror="this.style.display='none'">
+      <div class="print-title-block">
+        <div class="print-title">DESAYUNO</div>
+        <div class="print-subtitle">Breakfast Allergen Information</div>
+      </div>
+    </div>
+    <div class="print-date-badge">
+      <span>📅</span>
+      <span id="display-date">Cargando fecha...</span>
+    </div>
+  </div>
+
+  <div class="print-layout">
+    <div class="print-main" id="print-dishes">
+      <div class="print-no-data"><span>⏳</span><span>Conectando con Firebase...</span></div>
+    </div>
+    <div class="print-sidebar">
+      <div class="print-legend-title">
+        LEYENDA DE ALÉRGENOS
+        <span class="en">Allergens Legend</span>
+      </div>
+      <div class="print-legend-list" id="print-legend"></div>
+      <div class="print-traces-info">* TRAZAS: borde punteado / dashed border = may contain traces</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// ALLERGENS, CORRECTOR_PLATOS, CORRECTOR_INGLES loaded from allergen-data.js
+
+// ══════════════════════════════════════════════
+//  ESTADO
+// ══════════════════════════════════════════════
+let state   = { fecha: todayStr(), platos: [] };
+let fbReady = false;
+let unsaved = false;
+
+// ── UTILS ──
+// todayStr, escHtml loaded from utils.js
+function formatDateEs(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  const fecha = new Date(+y, +m - 1, +d);
+  let s = fecha.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+// escHtml loaded from utils.js
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3200);
+}
+function setStatus(text, color) {
+  document.getElementById('ctrl-status-text').textContent = text;
+  document.querySelector('.ctrl-status .status-dot').style.background = color || '#10b981';
+}
+function markUnsaved() {
+  unsaved = true;
+  setStatus('Sin guardar', '#f59e0b');
+}
+function markSaved() {
+  unsaved = false;
+  setStatus('Guardado ✓', '#10b981');
+}
+
+// ══════════════════════════════════════════════
+//  EDITOR — RENDER
+// ══════════════════════════════════════════════
+function renderEditor() {
+  const container = document.getElementById('dish-list');
+  container.innerHTML = '';
+  if (!state.platos.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">☕</div><p>Aún no hay productos. Pulsa "Añadir producto".</p></div>';
+    return;
+  }
+  state.platos.forEach((p, idx) => renderDishCard(p, idx));
+}
+function renderDishCard(plato, idx) {
+  const container = document.getElementById('dish-list');
+  const div = document.createElement('div');
+  div.className = 'dish-card';
+  div.id = `dish-card-${plato.id}`;
+  div.innerHTML = `
+    <div class="dish-header">
+      <div class="dish-num">${idx + 1}</div>
+      <div class="dish-names-row">
+        <input class="input-es" type="text" placeholder="🇪🇸  Nombre en español"
+               value="${escHtml(plato.nombreEs||'')}"
+               oninput="updateField('${plato.id}','nombreEs',this.value); autoTranslate('${plato.id}')">
+        <button class="translate-btn" onclick="manualTranslate('${plato.id}')" title="Traducir al inglés">🌐 Traducir</button>
+        <input class="input-en" type="text" placeholder="🇬🇧  English name (auto)"
+               value="${escHtml(plato.nombreEn||'')}"
+               oninput="updateField('${plato.id}','nombreEn',this.value); scheduleMark()">
+      </div>
+      <button class="btn-remove-dish" onclick="removeDish('${plato.id}')">🗑 Eliminar</button>
+    </div>
+    <div class="allergen-body">
+      <div class="alg-section">
+        <div class="alg-label"><span class="type-contains">● CONTIENE</span> / Contains:</div>
+        <div class="alg-grid">${ALLERGENS.map(a => buildAlgBtn(a, plato.id, 'contiene', plato.contiene||[])).join('')}</div>
+      </div>
+      <div class="alg-section">
+        <div class="alg-label"><span class="type-traces">⚠ TRAZAS</span> / May contain traces:</div>
+        <div class="alg-grid">${ALLERGENS.map(a => buildAlgBtn(a, plato.id, 'trazas', plato.trazas||[], true)).join('')}</div>
+      </div>
+    </div>`;
+  container.appendChild(div);
+}
+function buildAlgBtn(a, dishId, type, selected, isTrace=false) {
+  const active = selected.includes(a.id) ? 'active' : '';
+  const traceClass = isTrace ? 'traces-mode' : '';
+  return `<button class="alg-btn ${active} ${traceClass}" style="--clr:${a.color}"
+            onclick="toggleAllergen('${dishId}','${type}','${a.id}',this)" title="${a.es} / ${a.en}">
+    <div class="alg-icon-ring"><img src="${a.icon}" alt="${a.es}" onerror="this.style.display='none'"></div>
+    <div class="alg-name">${a.es}</div></button>`;
+}
+
+// ── DISH CRUD ──
+function addDish() {
+  const id = `d${Date.now()}`;
+  const plato = { id, nombreEs:'', nombreEn:'', contiene:[], trazas:[] };
+  state.platos.push(plato);
+  const emptyState = document.querySelector('#dish-list .empty-state');
+  if (emptyState) emptyState.remove();
+  renderDishCard(plato, state.platos.length - 1);
+  renumberDishes();
+  markUnsaved();
+  renderPreview();
+  setTimeout(() => document.getElementById(`dish-card-${id}`)?.querySelector('.input-es')?.focus(), 50);
+}
+function removeDish(id) {
+  state.platos = state.platos.filter(p => p.id !== id);
+  const card = document.getElementById(`dish-card-${id}`);
+  if (card) { card.style.opacity='0'; card.style.transform='translateX(20px)'; card.style.transition='all .25s';
+    setTimeout(() => { card.remove(); renumberDishes(); if(!state.platos.length) renderEditor(); }, 250); }
+  markUnsaved();
+  renderPreview();
+}
+function renumberDishes() { document.querySelectorAll('#dish-list .dish-num').forEach((el,i) => el.textContent=i+1); }
+function updateField(dishId, field, value) {
+  const d = state.platos.find(p=>p.id===dishId);
+  if(d){ d[field]=value; markUnsaved(); renderPreview(); }
+}
+function scheduleMark() { markUnsaved(); renderPreview(); }
+function toggleAllergen(dishId, type, algId) {
+  const dish = state.platos.find(p=>p.id===dishId); if(!dish) return;
+  const otherType = type === 'contiene' ? 'trazas' : 'contiene';
+  if (!Array.isArray(dish[type])) dish[type] = [];
+  if (!Array.isArray(dish[otherType])) dish[otherType] = [];
+  const arr = dish[type];
+  const otherArr = dish[otherType];
+  const idx = arr.indexOf(algId);
+  const otherIdx = otherArr.indexOf(algId);
+
+  if (idx === -1) {
+    arr.push(algId);
+    if (otherIdx !== -1) otherArr.splice(otherIdx, 1);
+  } else {
+    arr.splice(idx, 1);
+  }
+
+  markUnsaved();
+  renderPreview();
+  renderEditor();
+}
+
+
+// ── TRANSLATION ──
+// CORRECTOR_PLATOS, CORRECTOR_INGLES, correctTranslation, toTitleCaseSmart loaded from shared modules
+let translateTimers = {};
+async function autoTranslate(dishId) { markUnsaved(); renderPreview(); clearTimeout(translateTimers[dishId]); translateTimers[dishId] = setTimeout(()=>manualTranslate(dishId), 1400); }
+async function manualTranslate(dishId) {
+  const dish = state.platos.find(p=>p.id===dishId); if(!dish||!dish.nombreEs.trim()) return;
+  const en = await autoTranslateDish(dish);
+  if (en) {
+    dish.nombreEn = en;
+    const card = document.getElementById(`dish-card-${dishId}`);
+    if(card) card.querySelector('.input-en').value = dish.nombreEn;
+    markUnsaved();
+    renderPreview();
+  }
+}
+
+// ══════════════════════════════════════════════
+//  PREVIEW (print area) — se genera desde el estado
+// ══════════════════════════════════════════════
+function buildLegend() {
+  const list = document.getElementById('print-legend');
+  list.innerHTML = ALLERGENS.map(a => `
+    <div class="print-legend-item">
+      <div class="print-legend-circle">
+        <img src="${a.icon}" alt="${a.es}" onerror="this.style.display='none'">
+      </div>
+      <div>
+        <div class="print-legend-es">${a.es}</div>
+        <div class="print-legend-en">${a.en}</div>
+      </div>
+    </div>`).join('');
+}
+function renderPreview() {
+  document.getElementById('display-date').textContent = formatDateEs(state.fecha || todayStr());
+  const container = document.getElementById('print-dishes');
+  const platos = state.platos || [];
+  container.innerHTML = '';
+  if (!platos.length) {
+    container.innerHTML = '<div class="print-no-data"><span>🍽️</span><span>Sin productos de desayuno</span></div>';
+    return;
+  }
+  platos.forEach(p => {
+    const contiene = p.contiene || [];
+    const trazas   = p.trazas   || [];
+    let algHtml = '';
+    if (!contiene.length && !trazas.length) {
+      algHtml = '<div class="no-allergen-print"><span>🛡️ Libre de alérgenos</span><span class="en">Free from allergens</span></div>';
+    } else {
+      if (contiene.length) {
+        algHtml += `<div class="print-alg-row">${contiene.map(id => {
+          const a = ALLERGENS.find(x=>x.id===id); if(!a) return '';
+          return `<div class="print-icon-wrap" title="${a.es}"><img src="${a.icon}" alt="${a.es}" onerror="this.style.display='none'"></div>`;
+        }).join('')}</div>`;
+      }
+      if (trazas.length) {
+        algHtml += `<div class="print-alg-row" style="margin-top:4px;">
+          <span class="trace-tag">* TRAZAS</span>
+          ${trazas.map(id => {
+            const a = ALLERGENS.find(x=>x.id===id); if(!a) return '';
+            return `<div class="print-icon-wrap print-icon-trace" title="${a.es}"><img src="${a.icon}" alt="${a.es}" onerror="this.style.display='none'"></div>`;
+          }).join('')}</div>`;
+      }
+    }
+
+    const row = document.createElement('div');
+    row.className = 'print-dish-row';
+    row.innerHTML = `
+      <div class="print-dish-info">
+        <div class="print-dish-es">${escHtml(p.nombreEs||'PRODUCTO SIN NOMBRE')}</div>
+        <div class="print-dish-en">${escHtml(p.nombreEn||'')}</div>
+        
+      </div>
+      <div class="print-allergens">${algHtml}</div>`;
+    container.appendChild(row);
+  });
+}
+
+// ══════════════════════════════════════════════
+//  FECHA / PUBLICAR / CARGAR
+// ══════════════════════════════════════════════
+function onDateChange() {
+  state.fecha = document.getElementById('date-input').value || todayStr();
+  markUnsaved();
+  renderPreview();
+}
+
+async function publishDesayuno() {
+  state.fecha = document.getElementById('date-input').value || todayStr();
+  const btn = document.getElementById('btn-publish');
+  btn.disabled = true; const prev = btn.innerHTML; btn.textContent = '⏳ Guardando...';
+  if (!fbReady) { showToast('⚠️ Firebase no configurado', 'error'); btn.disabled=false; btn.innerHTML=prev; return; }
+  try {
+    // Solo se escribe el nodo del desayuno (independiente del comedor)
+    await firebase.database().ref('menu/desayuno').set({ fecha: state.fecha, platos: state.platos });
+    markSaved();
+    showToast('✅ Desayuno guardado', 'success');
+  } catch(e) { showToast('❌ Error: '+e.message, 'error'); }
+  finally { btn.disabled=false; btn.innerHTML=prev; }
+}
+
+function applyLoadedData(data) {
+  // Reinicio automático diario: solo se cargan los productos si el desayuno es de HOY.
+  // Firebase puede devolver "platos" como array o como objeto indexado ({"0":{...}}).
+  const platosRaw = data && data.platos;
+  const platosArr = Array.isArray(platosRaw) ? platosRaw : (platosRaw && typeof platosRaw === 'object' ? Object.values(platosRaw).filter(Boolean) : []);
+  if (data && data.fecha === todayStr()) {
+    state = { fecha: data.fecha, platos: platosArr.map(p => ({
+      id: safeId(p.id) || `d${Date.now()}${Math.random().toString(36).slice(2,6)}`,
+      nombreEs: p.nombreEs||'', nombreEn: p.nombreEn||'',
+      contiene: normalizeAllergenList(p.contiene), trazas: normalizeAllergenList(p.trazas)
+    })) };
+    document.getElementById('date-input').value = state.fecha;
+    renderEditor();
+    renderPreview();
+    markSaved();
+  } else {
+    // Nuevo día (o sin datos) → empezar en blanco (los alérgenos "se borran" solos)
+    state = { fecha: todayStr(), platos: [] };
+    document.getElementById('date-input').value = state.fecha;
+    renderEditor();
+    renderPreview();
+    setStatus('Nuevo día · sin guardar', '#f59e0b');
+    unsaved = true;
+  }
+}
+
+function reloadFromFirebase() {
+  if (!fbReady) { showToast('⚠️ Firebase no configurado', 'error'); return; }
+  firebase.database().ref('menu/desayuno').once('value')
+    .then(snap => { applyLoadedData(snap.val()); showToast('🔄 Datos recargados', 'info'); })
+    .catch(e => showToast('❌ Error: '+e.message, 'error'));
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('date-input').value = todayStr();
+  buildLegend();
+  renderEditor();
+  renderPreview();
+
+  try {
+    if (!window.firebaseConfig || window.firebaseConfig.apiKey === 'TU_API_KEY_AQUI') {
+      document.getElementById('firebase-warn').classList.add('visible');
+      setStatus('Firebase no configurado', '#ef4444');
+      return;
+    }
+    firebase.initializeApp(window.firebaseConfig);
+    fbReady = true;
+    firebase.database().ref('menu/desayuno').once('value')
+      .then(snap => applyLoadedData(snap.val()))
+      .catch(e => { console.warn(e); setStatus('Error al cargar', '#ef4444'); });
+  } catch(e) {
+    console.warn(e);
+    document.getElementById('firebase-warn').classList.add('visible');
+    setStatus('Error Firebase', '#ef4444');
+  }
+});
+
+window.addEventListener('beforeunload', () => {
+  try {
+    if (typeof firebase !== 'undefined' && firebase.apps?.length) {
+      firebase.database().ref('menu/desayuno').off();
+    }
+  } catch(e) {}
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Service DPT — Comidas Especiales</title>
+  <!-- PREVIEW: SIN SDK de Firebase y SIN credenciales de produccion.
+       Todos los datos vienen de mock-data.js (memoria local del navegador). -->
+  <script src="./mock-data.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script src="./allergen-data.js"></script>
+  <script src="./utils.js"></script>
+  <script src="./translation.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --text-scale: 1;
+      --text-sm:    clamp(20px, calc(3.4vmin * var(--text-scale)), 5.5vmin);
+      --text-base:  clamp(28px, calc(4.4vmin * var(--text-scale)), 8vmin);
+      --icon-base:  clamp(46px, calc(5.8vmin * var(--text-scale)), 10vmin);
+      --header-h: 16vh;
+    }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #f0f4f8; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    .screen { display: flex; flex-direction: column; width: 100vw; height: 100vh; }
+
+    /* CABECERA */
+    .header {
+      background: linear-gradient(135deg, #0b1f3a 0%, #1a3a6e 60%, #0b1f3a 100%);
+      height: var(--header-h); display: flex; align-items: center; padding: 0 2.5vw; gap: 2vw;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3); flex-shrink: 0;
+    }
+    .header-logo { height: 72%; max-height: 11vh; object-fit: contain; filter: brightness(1.15) drop-shadow(0 0 10px rgba(96,165,250,0.3)); }
+    .header-divider { width: 3px; height: 55%; background: rgba(255,255,255,0.2); border-radius: 2px; }
+    .header-title .es { font-size: clamp(26px, 4.6vmin, 7vmin); font-weight: 900; letter-spacing: 3px; color: #fff; text-transform: uppercase; }
+    .header-title .en { font-size: clamp(18px, 3.2vmin, 5vmin); color: #93c5fd; letter-spacing: 4px; text-transform: uppercase; font-style: italic; }
+    .header-spacer { flex: 1; }
+    .header-datetime { text-align: right; color: #fff; line-height: 1.2; }
+    .header-date { font-size: clamp(20px, 3.6vmin, 6vmin); font-weight: 700; color: #e0f2fe; }
+    .header-time { font-size: clamp(36px, 6.6vmin, 9vmin); font-weight: 900; color: #7dd3fc; letter-spacing: 2px; }
+
+    /* CUERPO */
+    .body { display: flex; flex: 1; min-height: 0; padding: 1.2vw; gap: 1.2vw; }
+    .main-col { flex: 1; display: flex; flex-direction: column; gap: 0.5vw; min-height: 0; overflow: hidden; padding-top: 1vw; }
+    .dish-pagination { display: flex; justify-content: center; gap: 8px; padding: 10px 0; flex-shrink: 0; }
+    .page-dot { width: clamp(12px, 1.5vmin, 16px); height: clamp(12px, 1.5vmin, 16px); border-radius: 50%; background: rgba(255,255,255,0.4); border: 2px solid rgba(0,0,0,0.3); cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+    .page-dot.active { background: #3b82f6; border-color: #1e40af; transform: scale(1.3); }
+
+    /* TARJETA DE PLATO */
+    .dish-row {
+      background: #ffffff; border-radius: 18px; padding: 0.5vw 1.1vw;
+      display: flex; align-items: center; box-shadow: 0 2px 14px rgba(0,0,0,0.07);
+      flex: 1 1 0; min-height: 0; border-left: 5px solid transparent; overflow: hidden; gap: 1vw;
+    }
+    .dish-row:nth-child(odd)  { border-left-color: #3b82f6; }
+    .dish-row:nth-child(even) { border-left-color: #10b981; }
+    .dish-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3vw; }
+    .dish-name-es { font-size: var(--text-base); font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.08; white-space: normal; overflow: hidden; overflow-wrap: break-word; word-break: break-word; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+    .dish-name-en-line { display: flex; align-items: center; gap: 1vmin; min-width: 0; }
+    .dish-name-en-wrap { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+    .dish-name-en { font-size: var(--text-sm); color: #334155; font-style: italic; line-height: 1.1; white-space: normal; overflow: hidden; overflow-wrap: break-word; word-break: break-word; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+    .dish-allergens { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 0.15vw; flex-shrink: 0; margin-left: auto; }
+    .allergen-section { display: flex; flex-direction: row; align-items: center; gap: 0.25vw; }
+    .section-label { font-size: clamp(18px, calc(2.3vmin * var(--text-scale)), 4.5vmin); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.3vmin 0.6vmin; border-radius: 0.4vmin; line-height: 1.1; white-space: nowrap; }
+    .contain-label { color: #1e40af; background: #dbeafe; }
+    .trace-label { color: #92400e; background: #fef3c7; border: 1px solid #fcd34d; }
+    .allergen-grid { display: flex; flex-wrap: wrap; gap: 0.7vmin; justify-content: flex-end; }
+    .alg-icon-wrap { width: var(--icon-base); height: var(--icon-base); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .alg-icon-wrap img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+    .alg-icon-wrap.trace-icon { opacity: 0.85; }
+    .no-allergen { background: #ecfdf5; border: 2px solid #6ee7b7; border-radius: 10px; padding: 0.5vmin 0.9vmin; color: #065f46; font-weight: 800; display: inline-flex; align-items: center; gap: 0.6vmin; white-space: nowrap; font-size: clamp(15px, calc(1.8vmin * var(--text-scale)), 3.4vmin); }
+    .no-allergen .shield-ok svg { width: clamp(24px, 3vmin, 5vmin); height: clamp(24px, 3vmin, 5vmin); }
+    .no-allergen-txt { display: flex; flex-direction: column; line-height: 1.15; }
+    .no-allergen-txt .es { font-size: clamp(17px, calc(2vmin * var(--text-scale)), 3.8vmin); white-space: nowrap; }
+    .no-allergen-txt .en { font-style: italic; font-size: clamp(13px, calc(1.5vmin * var(--text-scale)), 3vmin); opacity: 0.8; font-weight: 600; white-space: nowrap; }
+    .sin-gluten-badge { display: inline-flex; align-items: center; gap: 0.4vmin; padding: 0.3vmin 0.6vmin; border-radius: 6px; border: 1px solid #86efac; background: #f0fdf4; color: #166534; font-size: clamp(11px, calc(1.8vmin * var(--text-scale)), 3.2vmin); line-height: 1.05; flex-shrink: 0; }
+    .sin-gluten-icon { position: relative; width: clamp(22px, calc(2.8vmin * var(--text-scale)), 5.5vmin); height: clamp(22px, calc(2.8vmin * var(--text-scale)), 5.5vmin); flex-shrink: 0; display: inline-flex; }
+    .sin-gluten-icon img { width: 100%; height: 100%; object-fit: contain; }
+    .sin-gluten-icon svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .sin-gluten-text { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
+    .sin-gluten-text .sin-gluten-es { font-weight: 800; color: #166534; white-space: nowrap; }
+    .sin-gluten-text .sin-gluten-en { font-style: italic; color: #14532d; white-space: nowrap; }
+
+    /* LEYENDA LATERAL */
+    .sidebar { width: clamp(250px, 20vw, 500px); background: white; border-radius: 18px; padding: 0.8vw 0.6vw; display: flex; flex-direction: column; box-shadow: 0 2px 10px rgba(0,0,0,0.06); flex-shrink: 0; max-height: 100%; overflow: hidden; }
+    .legend-title { font-size: clamp(16px, calc(2.1vmin * var(--text-scale)), 3.6vmin); font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1.5px; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.4vmin; margin-bottom: 0.4vmin; flex-shrink: 0; }
+    .legend-title .en { display: block; font-style: italic; font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 0.9em; }
+    .legend-list { display: flex; flex-direction: column; justify-content: space-evenly; flex: 1; min-height: 0; }
+    .legend-item { display: flex; align-items: center; gap: 0.5vmin; flex: 0 0 auto; }
+    .legend-circle { width: clamp(30px, calc(4.4vmin * var(--text-scale)), 7vmin); height: clamp(30px, calc(4.4vmin * var(--text-scale)), 7vmin); flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+    .legend-circle img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+    .legend-text-wrap { line-height: 1.1; min-width: 0; overflow: hidden; }
+    .legend-es { font-size: clamp(15px, calc(1.9vmin * var(--text-scale)), 3.1vmin); font-weight: 700; color: #1e293b; text-transform: uppercase; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .legend-en { font-size: clamp(13px, calc(1.5vmin * var(--text-scale)), 2.6vmin); color: #475569; font-style: italic; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* PIE */
+    .footer { background: #0b1f3a; padding: 0.5vw 2.5vw; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .footer-brand { color: #94a3b8; font-size: clamp(13px, calc(1.2vmin * var(--text-scale)), 2.2vmin); letter-spacing: 1px; }
+    .footer-updated { color: #94a3b8; font-size: clamp(12px, calc(1.1vmin * var(--text-scale)), 2vmin); }
+    .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; margin-right: 6px; animation: blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    /* BANNER DE TURNO */
+    #turno-banner { display: none; text-align: center; padding: 0.6vw 2vw; font-weight: 800; font-size: clamp(18px, calc(2.4vmin * var(--text-scale)), 4vmin); color: #fff; background: linear-gradient(135deg, #1e3a5f, #35618f); flex-shrink: 0; }
+
+    .no-data { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; gap: 16px; }
+    .no-data .icon { font-size: 5vw; }
+    .no-data p { font-size: 2vw; font-weight: 600; }
+    .no-data small { font-size: 1.2vw; opacity: 0.7; }
+  </style>
+</head>
+<body>
+<div class="screen">
+  <div class="header">
+    <img src="./img/Encabezado.png" alt="Food Service DPT" class="header-logo" onerror="this.style.display='none'">
+    <div class="header-divider"></div>
+    <div class="header-title"><div class="es">Comidas Especiales</div><div class="en">Special Meals</div></div>
+    <div class="header-spacer"></div>
+    <div class="header-datetime"><div class="header-date" id="header-date">Cargando...</div><div class="header-time" id="header-time">--:--</div></div>
+  </div>
+
+  <div id="turno-banner"></div>
+
+  <div class="body">
+    <div class="main-col" id="main-col">
+      <div class="dish-pagination" id="dish-pagination" style="display:none;"></div>
+      <div class="no-data"><span class="icon">⏳</span><p>Conectando con Firebase...</p><small>Espera un momento</small></div>
+    </div>
+    <div class="sidebar"><div class="legend-title">ALÉRGENOS<span class="en">Allergen Legend</span></div><div class="legend-list" id="legend-list"></div></div>
+  </div>
+
+  <div class="footer"><span class="footer-brand">FOOD SERVICE DPT &nbsp;·&nbsp; Allergen Management System</span><span class="footer-updated"><span class="live-dot"></span><span id="footer-updated">En vivo</span></span></div>
+</div>
+
+<script>
+// ═══════════ ESTADO ═══════════
+let latestData = null;
+let turnosConfig = [];
+let lastRenderedKey = '';
+let dishPagination = { pages: [], current: 0, timer: null, interval: 20000, isPaused: false, rotationEnabled: false };
+
+// ═══════════ RENDER ═══════════
+function buildLegend() {
+  const list = document.getElementById('legend-list');
+  list.innerHTML = ALLERGENS.map(a => `
+    <div class="legend-item"><div class="legend-circle" style="background:${a.color}20"><img src="${a.icon}" alt="${a.es}"></div>
+    <div class="legend-text-wrap"><span class="legend-es">${a.es}</span><span class="legend-en">${a.en}</span></div></div>`).join('');
+}
+
+function icon(id, trace) {
+  const a = ALLERGEN_BY_ID[id]; if (!a) return '';
+  return `<div class="alg-icon-wrap${trace ? ' trace-icon' : ''}" title="${a.es} · ${a.en}"><img src="${a.icon}" alt="${a.es}" onerror="this.style.display='none'"></div>`;
+}
+
+function createDishRow(plato) {
+  const contiene = plato.contiene || [];
+  const trazas = plato.trazas || [];
+  const nameEs = escHtml(plato.nombreEs || 'PLATO SIN NOMBRE');
+  const nameEn = plato.nombreEn ? escHtml(plato.nombreEn) : '';
+
+  // BUG CORREGIDO: si SOLO hay trazas (contiene vacío) NO se muestra 'sin alérgenos'.
+  const hayAlergenos = contiene.length > 0 || trazas.length > 0;
+  let allergensHtml = '';
+  if (!hayAlergenos) {
+    allergensHtml = `<div class="no-allergen"><span class="shield-ok" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2 L20 5 V11 C20 16.2 16.4 19.8 12 22 C7.6 19.8 4 16.2 4 11 V5 Z" fill="#16a34a"/><path d="M7.5 12.3 l3 3 l5.5 -6.5" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="no-allergen-txt"><span class="es">Libre de alérgenos</span><span class="en">Allergen-free</span></span></div>`;
+  } else {
+    if (contiene.length > 0) allergensHtml += `<div class="allergen-section contain"><span class="section-label contain-label">CONTIENE</span><div class="allergen-grid">${contiene.map(i => icon(i, false)).join('')}</div></div>`;
+    if (trazas.length > 0) allergensHtml += `<div class="allergen-section traces"><span class="section-label trace-label">⚠ TRAZAS</span><div class="allergen-grid">${trazas.map(i => icon(i, true)).join('')}</div></div>`;
+  }
+  const noGlutenSvg = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M8 12.5l2.5 2.5 5.5-6.5" fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const sinGluten = plato.sinGluten ? `<span class="sin-gluten-badge"><span class="sin-gluten-icon"><img src="./img/alergenos_gluten.svg" alt="" aria-hidden="true">${noGlutenSvg}</span><span class="sin-gluten-text"><span class="sin-gluten-es">Sin gluten · pregunte al personal</span><span class="sin-gluten-en">Gluten-free · ask staff</span></span></span>` : '';
+  const enLine = (nameEn || sinGluten) ? `<div class="dish-name-en-line">${nameEn ? `<div class="dish-name-en-wrap"><p class="dish-name-en">${nameEn}</p></div>` : ''}${sinGluten}</div>` : '';
+  return `<article class="dish-row" role="listitem" aria-label="${nameEs}"><div class="dish-content"><h3 class="dish-name-es">${nameEs}</h3>${enLine}</div><div class="dish-allergens">${allergensHtml}</div></article>`;
+}
+
+function renderMenu(data) {
+  const platos = (data.platos || []).filter(p => !p.oculto).map(normalizeDish);
+  buildLegend();
+  document.getElementById('header-date').textContent = formatDate(data.fecha);
+  if (platos.length === 0) { showNoData(true); return; }
+  initDishPagination(platos);
+  document.getElementById('footer-updated').textContent = 'Actualizado a las ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function formatDate(dateStr) {
+  const [y,m,d] = (dateStr || todayStr()).split('-').map(Number);
+  const f = new Date(y, (m||1)-1, d||1);
+  const w = f.toLocaleDateString('es-ES', { weekday: 'long' });
+  return w.charAt(0).toUpperCase() + w.slice(1) + ', ' + f.getDate() + ' de ' + f.toLocaleDateString('es-ES', { month: 'long' }) + ' de ' + f.getFullYear();
+}
+
+function showNoData(empty) {
+  stopRotation();
+  const mainCol = document.getElementById('main-col');
+  const dots = mainCol.querySelector('#dish-pagination');
+  mainCol.innerHTML = empty
+    ? '<div class="no-data"><span class="icon">🍽️</span><p>Menú publicado sin platos</p><small>No dishes have been added yet</small></div>'
+    : '<div class="no-data"><span class="icon">🍽️</span><p>Menú del día no publicado</p><small>Today&#39;s menu has not been published yet</small></div>';
+  if (dots) mainCol.appendChild(dots);
+}
+
+function initDishPagination(platos) {
+  const mainCol = document.getElementById('main-col');
+  mainCol.querySelectorAll('.dish-row, .no-data').forEach(el => el.remove());
+  platos.forEach(p => mainCol.insertAdjacentHTML('beforeend', createDishRow(p)));
+  const hasOverflow = mainCol.scrollHeight > mainCol.clientHeight;
+  if (!hasOverflow) {
+    dishPagination.pages = [platos]; dishPagination.current = 0; dishPagination.rotationEnabled = false;
+    document.getElementById('dish-pagination').style.display = 'none'; stopRotation(); fitDishText(); return;
+  }
+  const colH = mainCol.clientHeight;
+  const cs = getComputedStyle(mainCol);
+  const gap = parseFloat(cs.gap || '0') || 0;
+  const padTop = parseFloat(cs.paddingTop || '0') || 0;
+  const usableH = Math.max(80, colH - padTop);
+  let rowH = measureAvg(platos);
+  const maxRows = Math.max(1, Math.floor(usableH / (rowH + gap)));
+  const pages = [];
+  for (let i = 0; i < platos.length; i += maxRows) pages.push(platos.slice(i, i + maxRows));
+  dishPagination.pages = pages; dishPagination.current = 0; dishPagination.rotationEnabled = pages.length > 1;
+  if (pages.length > 0) renderPage(0);
+  const container = document.getElementById('dish-pagination');
+  if (dishPagination.rotationEnabled) { setDots(); startRotation(); } else container.style.display = 'none';
+}
+
+function measureAvg(platos) {
+  const mainCol = document.getElementById('main-col');
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;left:-10000px;top:0;width:' + mainCol.clientWidth + 'px;visibility:hidden;';
+  platos.forEach(p => probe.insertAdjacentHTML('beforeend', createDishRow(p)));
+  document.body.appendChild(probe);
+  const hs = [];
+  probe.querySelectorAll('.dish-row').forEach(row => {
+    const c = row.querySelector('.dish-content');
+    const a = row.querySelector('.dish-allergens');
+    hs.push(Math.max(c ? c.scrollHeight : 0, a ? a.scrollHeight : 0));
+  });
+  document.body.removeChild(probe);
+  return hs.length ? (hs.reduce((x,y)=>x+y,0) / hs.length) : 120;
+}
+
+function renderPage(i) {
+  const mainCol = document.getElementById('main-col');
+  mainCol.querySelectorAll('.dish-row, .no-data').forEach(el => el.remove());
+  (dishPagination.pages[i] || []).forEach(p => mainCol.insertAdjacentHTML('beforeend', createDishRow(p)));
+  setDots(); fitDishText();
+}
+
+function setDots() {
+  const c = document.getElementById('dish-pagination');
+  if (dishPagination.pages.length <= 1) { c.style.display = 'none'; return; }
+  c.style.display = 'flex';
+  c.innerHTML = dishPagination.pages.map((_, idx) => `<button class="page-dot${idx===dishPagination.current?' active':''}" aria-label="Ir a página ${idx+1}" onclick="goPage(${idx})"></button>`).join('');
+}
+window.goPage = function(n) {
+  if (!dishPagination.rotationEnabled) return;
+  stopRotation(); dishPagination.current = n; renderPage(n); startRotation();
+};
+function startRotation() {
+  if (!dishPagination.rotationEnabled || dishPagination.pages.length <= 1) return;
+  stopRotation();
+  dishPagination.timer = setInterval(() => {
+    if (dishPagination.isPaused) return;
+    const n = (dishPagination.current + 1) % dishPagination.pages.length;
+    dishPagination.current = n; renderPage(n);
+  }, dishPagination.interval);
+}
+function stopRotation() { if (dishPagination.timer) { clearInterval(dishPagination.timer); dishPagination.timer = null; } }
+
+function fitDishText() {
+  document.querySelectorAll('#main-col .dish-row').forEach(row => {
+    const content = row.querySelector('.dish-content');
+    const nameEl = row.querySelector('.dish-name-es');
+    if (!content || !nameEl) return;
+    const h = row.clientHeight; if (h <= 0) return;
+    const enEl = row.querySelector('.dish-name-en');
+    const over = () => content.scrollHeight > h + 2;
+    if (!over()) return;
+    let fs = parseFloat(getComputedStyle(nameEl).fontSize) || 30;
+    const min = Math.max(12, Math.round(fs * 0.5));
+    while (over() && fs > min) { fs -= 1; nameEl.style.fontSize = fs + 'px'; if (enEl) enEl.style.fontSize = Math.max(11, Math.round(fs * 0.72)) + 'px'; }
+  });
+}
+
+// ═══════════ RELOJ ═══════════
+function updateClock() {
+  const now = new Date();
+  document.getElementById('header-time').textContent = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  turnoBanner(now);
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ═══════════ TURNO (banner sencillo) ═══════════
+function minToMin(hhmm) { const p = hhmm.split(':').map(Number); return p[0]*60 + p[1]; }
+function turnoBanner(now) {
+  if (!turnosConfig.length) return;
+  const curMin = now.getHours()*60 + now.getMinutes();
+  let next = null;
+  turnosConfig.filter(t => t.activo && t.hora).forEach(t => {
+    const antes = (typeof t.minutosAntes === 'number' && t.minutosAntes > 0) ? t.minutosAntes : 5;
+    const startMin = minToMin(t.hora) - antes;
+    const diff = startMin - curMin;
+    if (diff >= 0 && diff <= antes) { if (!next || diff < next.diff) next = { t, diff }; }
+  });
+  const b = document.getElementById('turno-banner');
+  if (next) { b.style.display = 'block'; b.style.background = next.t.bgColor || '#1e3a5f'; b.textContent = '⏰ ' + (next.t.label || 'Cambio de turno') + ' · en ' + next.diff + ' min'; }
+  else { b.style.display = 'none'; }
+}
+
+// ═══════════ FIREBASE ═══════════
+function initFirebase() {
+  try {
+    if (!firebaseConfig || firebaseConfig.apiKey === 'TU_API_KEY_AQUI') { showNoData(false); return; }
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    db.ref('menu/comedor').on('value', snap => {
+      latestData = snap.val();
+      const key = JSON.stringify(latestData); if (key === lastRenderedKey) return;
+      lastRenderedKey = key;
+      if (!latestData || latestData.fecha !== todayStr()) { showNoData(false); return; }
+      renderMenu(latestData);
+    }, err => { console.error(err); showNoData(false); });
+    db.ref('turnos').on('value', snap => {
+      const d = snap.val();
+      turnosConfig = Array.isArray(d) ? d : (d && typeof d === 'object' ? Object.values(d).filter(Boolean) : []);
+    });
+  } catch(e) { console.error(e); showNoData(false); }
+}
+
+window.addEventListener('resize', () => { stopRotation(); if (latestData && latestData.fecha === todayStr()) renderMenu(latestData); });
+window.addEventListener('beforeunload', () => { stopRotation(); try { if (typeof firebase !== 'undefined') firebase.database().ref('menu/comedor').off(); } catch(e){} });
+document.addEventListener('DOMContentLoaded', () => { buildLegend(); initFirebase(); updateClock(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Service DPT — Pantalla Comedor</title>
+  <!-- PREVIEW: SIN SDK de Firebase y SIN credenciales de produccion.
+       Todos los datos vienen de mock-data.js (memoria local del navegador). -->
+  <script src="./mock-data.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script src="./allergen-data.js"></script>
+  <script src="./utils.js"></script>
+  <script src="./translation.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* ── ESCALA DE TEXTO (calibración desde gestión) ── */
+      --text-scale: 1;
+
+      /* ── TEXT SIZES ──
+         Los topes (max) están en vmin y no en px para que en pantallas
+         grandes (>70") el texto siga creciendo en vez de quedarse "congelado".
+         vmin escala con la altura de la pantalla: todo crece a la vez y siempre
+         cabe. El mínimo en px mantiene la legibilidad y --text-scale (0.5–2.0)
+         sigue controlando el tamaño desde el panel de gestión. */
+      --text-sm:    clamp(22px, calc(3.5vmin * var(--text-scale)), 5.5vmin);
+      --text-base:  clamp(30px, calc(4.5vmin * var(--text-scale)), 8vmin);
+      --text-lg:    clamp(36px, calc(5.5vmin * var(--text-scale)), 9vmin);
+      --text-xl:    clamp(50px, calc(7.5vmin * var(--text-scale)), 12vmin);
+
+      /* ── ICON SIZES ── */
+      --icon-base:  clamp(48px, calc(6vmin * var(--text-scale)), 10vmin);
+
+      /* ── HEADER ── */
+      --header-h: 18vh;
+
+      /* ── DISH ── */
+      --dish-name-size:   var(--text-base);
+      --dish-en-size:     var(--text-sm);
+
+      /* ── TURNO OVERLAY ── */
+      --turno-title-size:        var(--text-lg);
+      --turno-msg-es-size:       var(--text-xl);
+      --turno-msg-en-size:       var(--text-base);
+      --turno-countdown-size:    var(--text-lg);
+      --carousel-es-size:        var(--text-base);
+      --carousel-en-size:        var(--text-sm);
+      --carousel-farewell-es-size: var(--text-lg);
+      --carousel-farewell-en-size: var(--text-base);
+    }
+
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #f0f4f8;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    /* ─── LAYOUT MASTER ─── */
+    .screen { display: flex; flex-direction: column; width: 100vw; height: 100vh; }
+
+    /* ─── HEADER ─── */
+    .header {
+      background: linear-gradient(135deg, #0b1f3a 0%, #1a3a6e 60%, #0b1f3a 100%);
+      height: var(--header-h);
+      display: flex; align-items: center; padding: 0 2.5vw; gap: 2vw;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3); flex-shrink: 0;
+    }
+    .header-logo { height: 75%; max-height: 12vh; object-fit: contain; filter: brightness(1.15) drop-shadow(0 0 10px rgba(96,165,250,0.3)); }
+    .header-divider { width: 3px; height: 55%; background: rgba(255,255,255,0.2); border-radius: 2px; }
+    .header-title .es { font-size: clamp(28px, 5vmin, 7vmin); font-weight: 900; letter-spacing: 3px; color: #ffffff; text-transform: uppercase; }
+    .header-title .en { font-size: clamp(20px, 3.5vmin, 5vmin); color: #93c5fd; letter-spacing: 4px; text-transform: uppercase; font-style: italic; }
+    .header-spacer { flex: 1; }
+    .header-datetime { text-align: right; color: white; line-height: 1.2; }
+    .header-date { font-size: clamp(22px, 4vmin, 6vmin); font-weight: 700; color: #e0f2fe; text-transform: none; }
+    .header-time { font-size: clamp(40px, 7vmin, 9vmin); font-weight: 900; color: #7dd3fc; letter-spacing: 2px; }
+
+    /* ─── BODY ─── */
+    .body { display: flex; flex: 1; min-height: 0; padding: 1.2vw; gap: 1.2vw; }
+
+    /* ─── MAIN COL ─── */
+    .main-col { flex: 1; display: flex; flex-direction: column; gap: 0.5vw; min-height: 0; overflow: hidden; padding-top: 1vw; }
+
+    /* ─── DISH ROW ─── */
+    .dish-row {
+      background: #ffffff; border-radius: 14px;
+      padding: 0.45vw 1vw;
+      display: flex; align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      flex: 1 1 0; min-height: 0;
+      border-left: 5px solid transparent;
+      overflow: hidden;
+      gap: 1vw;
+    }
+    .dish-row:nth-child(odd)  { border-left-color: #3b82f6; }
+    .dish-row:nth-child(even) { border-left-color: #10b981; }
+
+    .dish-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3vw; }
+    .dish-name-es {
+      font-size: var(--dish-name-size); font-weight: 900; color: #0f172a;
+      text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.08;
+      white-space: normal; overflow: hidden; overflow-wrap: break-word; word-break: break-word;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+    }
+    .dish-name-en-line {
+      display: flex; align-items: center; gap: 1vmin; min-width: 0;
+    }
+    .dish-name-en-wrap { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+    .dish-name-en {
+      font-size: calc(var(--dish-en-size)); color: #334155; font-style: italic; line-height: 1.1;
+      white-space: normal; overflow: hidden; overflow-wrap: break-word; word-break: break-word;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+    }
+    /* ─── ALLERGEN ICONS ── */
+    .dish-allergens {
+      display: flex; flex-direction: column; align-items: flex-end; justify-content: center;
+      gap: 0.15vw; flex-shrink: 0; margin-left: auto;
+    }
+    .allergen-section { display: flex; flex-direction: row; align-items: center; gap: 0.25vw; }
+    .section-label {
+      font-size: clamp(20px, calc(2.4vmin * var(--text-scale)), 4.5vmin); font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.5px; padding: 0.3vmin 0.6vmin; border-radius: 0.4vmin; line-height: 1.1;
+      white-space: nowrap;
+    }
+    .contain-label { color: #1e40af; background: #dbeafe; }
+    .trace-label { color: #92400e; background: #fef3c7; border: 1px solid #fcd34d; }
+    .allergen-grid {
+      display: flex; flex-wrap: wrap; gap: 0.7vmin; justify-content: flex-end;
+    }
+    .alg-icon-wrap {
+      width: var(--icon-base); height: var(--icon-base);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; position: relative;
+    }
+    .alg-icon-wrap img {
+      width: 100%; height: 100%; object-fit: contain;
+      position: relative; z-index: 2;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    }
+    .alg-icon-wrap.trace-icon { opacity: 0.8; }
+    .no-allergen {
+      background: #ecfdf5; border: 2px solid #6ee7b7; border-radius: 8px;
+      padding: 0.5vmin 0.9vmin; color: #065f46; font-weight: 800;
+      display: inline-flex; align-items: center; gap: 0.6vmin;
+      white-space: nowrap; font-size: clamp(16px, calc(1.9vmin * var(--text-scale)), 3.4vmin);
+    }
+    .no-allergen .shield-ok { flex-shrink: 0; display: flex; }
+    .no-allergen .shield-ok svg {
+      width: clamp(26px, 3vmin, 5vmin); height: clamp(26px, 3vmin, 5vmin);
+      filter: drop-shadow(0 2px 3px rgba(0,0,0,0.18));
+    }
+    .no-allergen-txt { display: flex; flex-direction: column; line-height: 1.15; }
+    .no-allergen-txt .es { font-size: clamp(18px, calc(2.1vmin * var(--text-scale)), 3.8vmin); white-space: nowrap; }
+    .no-allergen-txt .en { font-style: italic; font-size: clamp(14px, calc(1.6vmin * var(--text-scale)), 3vmin); opacity: 0.8; font-weight: 600; white-space: nowrap; }
+    .sin-gluten-badge {
+      display: inline-flex; align-items: center; gap: 0.4vmin;
+      padding: 0.3vmin 0.6vmin; border-radius: 6px;
+      border: 1px solid #86efac; background: #f0fdf4; color: #166534;
+      font-size: clamp(11px, calc(1.9vmin * var(--text-scale)), 3.2vmin); line-height: 1.05;
+      flex-shrink: 0;
+    }
+    .sin-gluten-icon {
+      position: relative; width: clamp(24px, calc(3vmin * var(--text-scale)), 5.5vmin); height: clamp(24px, calc(3vmin * var(--text-scale)), 5.5vmin);
+      flex-shrink: 0; display: inline-flex;
+    }
+    .sin-gluten-icon img { width: 100%; height: 100%; object-fit: contain; }
+    .sin-gluten-icon svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .sin-gluten-text { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
+    .sin-gluten-text .sin-gluten-es { font-weight: 800; color: #166534; white-space: nowrap; }
+    .sin-gluten-text .sin-gluten-en { font-style: italic; color: #14532d; white-space: nowrap; }
+
+    /* ─── SIDEBAR LEGEND ─── */
+    .sidebar {
+      width: clamp(250px, 20vw, 500px); background: white; border-radius: 14px;
+      padding: 0.8vw 0.6vw; display: flex; flex-direction: column;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      flex-shrink: 0; max-height: 100%; overflow: hidden;
+    }
+    .legend-title { font-size: clamp(16px, calc(2.1vmin * var(--text-scale)), 3.6vmin); font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1.5px; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.4vmin; margin-bottom: 0.4vmin; flex-shrink: 0; }
+    .legend-title .en { display: block; font-style: italic; font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 0.9em; }
+    .legend-list { display: flex; flex-direction: column; justify-content: space-evenly; align-content: stretch; flex: 1; min-height: 0; }
+    .legend-item { display: flex; align-items: center; gap: 0.5vmin; flex: 0 0 auto; }
+    .legend-circle { width: clamp(30px, calc(4.4vmin * var(--text-scale)), 7vmin); height: clamp(30px, calc(4.4vmin * var(--text-scale)), 7vmin); flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+    .legend-circle img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+    .legend-text-wrap { line-height: 1.1; min-width: 0; overflow: hidden; }
+    .legend-es { font-size: clamp(15px, calc(1.9vmin * var(--text-scale)), 3.1vmin); font-weight: 700; color: #1e293b; text-transform: uppercase; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .legend-en { font-size: clamp(13px, calc(1.5vmin * var(--text-scale)), 2.6vmin); color: #475569; font-style: italic; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ─── FOOTER ─── */
+    .footer { background: #0b1f3a; padding: 0.5vw 2.5vw; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .footer-brand { color: #94a3b8; font-size: clamp(13px, calc(1.2vmin * var(--text-scale)), 2.2vmin); letter-spacing: 1px; }
+    .footer-updated { color: #94a3b8; font-size: clamp(12px, calc(1.1vmin * var(--text-scale)), 2vmin); }
+    .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; margin-right: 6px; animation: blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+    /* ── PAGINACIÓN DE PLATOS ── */
+.dish-pagination { display: flex; justify-content: center; gap: 8px; padding: 10px 0; flex-shrink: 0; }
+.page-dot { width: clamp(12px, 1.5vmin, 16px); height: clamp(12px, 1.5vmin, 16px); border-radius: 50%; background: rgba(255,255,255,0.4); border: 2px solid rgba(0,0,0,0.3); transition: all 0.2s; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+.page-dot.active { background: #3b82f6; border-color: #1e40af; transform: scale(1.3); box-shadow: 0 2px 10px rgba(59,130,246,0.4); }
+
+.no-data { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; gap: 16px; }
+    .no-data .icon { font-size: 5vw; }
+    .no-data p { font-size: 2vw; font-weight: 600; }
+    .no-data small { font-size: 1.2vw; opacity: 0.7; }
+
+    /* ═══════════════════════════════════════════════════
+       TURNO OVERLAY — Pantalla completa espectacular
+    ═══════════════════════════════════════════════════ */
+    #turno-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+    #turno-overlay.visible { opacity: 1; pointer-events: auto; }
+
+    /* Dark scrim behind the card */
+    .turno-scrim {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+    }
+
+    /* Main card */
+    .turno-card-tv {
+      position: relative; z-index: 1;
+      width: 92vw; max-width: 1600px;
+      border-radius: 2.5vw;
+      padding: clamp(20px, 3vw, 48px) clamp(24px, 5vw, 80px);
+      text-align: center;
+      overflow: hidden;
+      box-shadow: 0 3vw 6vw rgba(0,0,0,0.6), 0 0 0 3px rgba(255,255,255,0.12);
+      transform: scale(0.85) translateY(3vw);
+      transition: transform 0.5s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease;
+      animation: cardGlow 2.5s ease-in-out infinite;
+      opacity: 0;
+    }
+    /* Pulsing outer glow via box-shadow (NOT clipped by overflow:hidden) */
+    @keyframes cardGlow {
+      0%, 100% { box-shadow: 0 4vw 8vw rgba(0,0,0,0.6), 0 0 0 4px rgba(255,255,255,0.12); }
+      50%      { box-shadow: 0 4vw 8vw rgba(0,0,0,0.6), 0 0 0 9px rgba(255,255,255,0.22); }
+    }
+    #turno-overlay.visible .turno-card-tv { transform: scale(1) translateY(0); opacity: 1; }
+
+    /* Bell pulse animation */
+    .turno-bell {
+      font-size: clamp(34px, 7vw, 112px); line-height: 1;
+      display: block; margin-bottom: 1vw;
+      animation: bellRing 0.6s ease-in-out 0.3s 3;
+      transform-origin: top center;
+    }
+    @keyframes bellRing {
+      0%,100% { transform: rotate(0deg); }
+      20%      { transform: rotate(-20deg); }
+      40%      { transform: rotate(20deg); }
+      60%      { transform: rotate(-12deg); }
+      80%      { transform: rotate(12deg); }
+    }
+
+    .turno-title {
+      font-size: var(--turno-title-size);
+      font-weight: 900; letter-spacing: 4px;
+      text-transform: uppercase; opacity: 0.75;
+      margin-bottom: 1vw;
+    }
+
+    .turno-msg-es {
+      font-size: var(--turno-msg-es-size);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      line-height: 1.05;
+      margin-bottom: 1vw;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      word-break: break-word;
+    }
+
+    .turno-msg-en {
+      font-size: var(--turno-msg-en-size);
+      font-style: italic;
+      opacity: 0.78;
+      margin-bottom: 1.5vw;
+      line-height: 1.2;
+    }
+
+    /* Countdown bar */
+    .turno-countdown-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 0.6vw;
+    }
+    .turno-countdown-label {
+      font-size: var(--turno-countdown-size); font-weight: 900;
+      opacity: 0.85; letter-spacing: 2px; text-transform: uppercase;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .turno-progress-track {
+      width: min(65%, 900px); height: clamp(10px, 1.3vw, 20px); border-radius: 10px;
+      background: rgba(255,255,255,0.2); overflow: hidden;
+    }
+    .turno-progress-bar {
+      height: 100%; border-radius: 10px;
+      background: rgba(255,255,255,0.9);
+      transition: width 1s linear;
+    }
+
+    /* TURNO CAROUSEL (integrado: despedida + recordatorios) — 1 slide por vista */
+    .turno-carousel {
+      position: relative;
+      margin: 2vw 0;
+      padding: 1vw 1.5vw;
+      border-radius: 1.5vw;
+      background: rgba(0,0,0,0.15);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+      height: 26vh;
+      box-sizing: border-box;
+    }
+    .carousel-track {
+      display: flex;
+      height: 100%;
+      transition: transform 0.6s cubic-bezier(0.4,0,0.2,1);
+      will-change: transform;
+    }
+    .carousel-slide {
+      flex: 0 0 100%;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 2.5vw;
+      padding: 1vw 1.5vw;
+      box-sizing: border-box;
+    }
+    /* Despedida: sin imagen, mensaje centrado en todo el ancho */
+    .carousel-slide.farewell {
+      flex-direction: column;
+      justify-content: center;
+      text-align: center;
+    }
+    .carousel-slide .slide-media {
+      flex: 0 0 auto;
+      width: min(32vmin, 40vw);
+      height: min(20vmin, 22vh);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .carousel-slide .slide-media img {
+      max-width: 100%; max-height: 100%;
+      width: auto; height: auto;
+      border-radius: 1vw;
+      box-shadow: 0 4px 25px rgba(0,0,0,0.3);
+      object-fit: contain;
+    }
+    .carousel-slide.farewell .slide-media { display: none; }
+    .slide-text-col {
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column; gap: 0.8vmin;
+      text-align: left;
+    }
+    .carousel-slide.farewell .slide-text-col {
+      align-items: center; text-align: center; gap: 1vmin;
+    }
+    .slide-label {
+      font-size: clamp(12px, 1.6vmin, 3vmin);
+      font-weight: 700;
+      opacity: 0.7;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 0.4vmin;
+    }
+    .slide-text-es {
+      font-size: var(--carousel-es-size);
+      font-weight: 900;
+      text-transform: uppercase;
+      text-align: inherit;
+      text-shadow: 0 3px 15px rgba(0,0,0,0.6);
+      line-height: 1.08;
+      word-break: break-word;
+      max-width: 100%;
+      color: inherit;
+    }
+    .slide-text-en {
+      font-size: var(--carousel-en-size);
+      font-style: italic;
+      opacity: 0.85;
+      text-align: inherit;
+      line-height: 1.2;
+      max-width: 100%;
+      color: inherit;
+    }
+    .carousel-slide.farewell .slide-text-es {
+      font-size: var(--carousel-farewell-es-size);
+      max-height: 16vh;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+    }
+    .carousel-slide.farewell .slide-text-en {
+      font-size: var(--carousel-farewell-en-size);
+      max-height: 10vh;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+    }
+    .carousel-dots {
+      display: flex;
+      justify-content: center;
+      gap: 0.6vw;
+      margin-top: 1vw;
+    }
+    .carousel-dot {
+      width: clamp(10px, 1.2vmin, 16px); height: clamp(10px, 1.2vmin, 16px);
+      border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      cursor: pointer;
+      transition: all 0.3s;
+      border: 2px solid transparent;
+    }
+    .carousel-dot.active {
+      background: #fff;
+      transform: scale(1.4);
+      border-color: rgba(255,255,255,0.5);
+    }
+    .carousel-dot:hover { background: rgba(255,255,255,0.5); }
+
+    /* Dismiss button (subtle, for manual close) */
+    .turno-dismiss-btn {
+      position: absolute; top: 2vw; right: 2.5vw;
+      background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.7); border-radius: 50px;
+      padding: 0.6vw 1.5vw; font-size: clamp(11px, 1.1vw, 18px); font-weight: 700;
+      cursor: pointer; letter-spacing: 1px; transition: all 0.2s;
+    }
+    .turno-dismiss-btn:hover { background: rgba(255,255,255,0.25); color: white; }
+
+    /* Shimmer strip across top */
+    .turno-shimmer {
+      position: absolute; top: 0; left: 0; right: 0; height: 6px;
+      border-radius: 0;                 /* the card clips it, so it spans the full width */
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+      background-size: 200% 100%;
+      animation: shimmer 2s infinite;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* Particles background (CSS only, simple) */
+    .turno-particles {
+      position: absolute; inset: 0; border-radius: 3vw; overflow: hidden; pointer-events: none;
+    }
+    .turno-particles::before, .turno-particles::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      animation: floatCircle 8s ease-in-out infinite;
+    }
+    .turno-particles::before { width: 40vw; height: 40vw; left: -10vw; top: -10vw; animation-delay: 0s; }
+    .turno-particles::after  { width: 30vw; height: 30vw; right: -5vw; bottom: -5vw; animation-delay: -4s; }
+    @keyframes floatCircle { 0%,100%{transform:translate(0,0)} 50%{transform:translate(2vw,2vw)} }
+
+    /* ─── CIERRE DE COMEDOR — pantalla completa, sin recuadro ─── */
+    #cierre-overlay {
+      position: fixed; inset: 0; z-index: 10000;
+      display: flex; align-items: center; justify-content: center;
+      padding: 3vw;
+      opacity: 0; visibility: hidden;
+      transition: opacity .45s ease, visibility .45s;
+      background: radial-gradient(circle at 50% 0%, #263f67 0%, #101d34 46%, #070d19 100%);
+      color: #fff; overflow: hidden;
+    }
+    #cierre-overlay.visible { opacity: 1; visibility: visible; }
+    .cierre-card {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center;
+      position: relative;
+    }
+    .cierre-card::before { content:''; position:absolute; inset:auto -10% -70% -10%; height:55%; background:radial-gradient(ellipse,rgba(56,189,248,.22),transparent 65%); pointer-events:none; }
+    .cierre-logo { position:relative; height:clamp(60px,8vmin,150px); object-fit:contain; filter:brightness(1.2) drop-shadow(0 10px 16px rgba(0,0,0,.35)); margin-bottom:1.6vmin; }
+    .cierre-kicker { position:relative; color:#7dd3fc; font-size:clamp(14px,calc(2vmin * var(--text-scale)),30px); font-weight:800; letter-spacing:.22em; text-transform:uppercase; }
+    .cierre-title { position:relative; font-size:clamp(40px,12vmin,150px); font-weight:950; letter-spacing:.02em; text-transform:uppercase; line-height:1; margin:1.2vmin 0; text-shadow:0 5px 24px rgba(0,0,0,.3); white-space:nowrap; }
+    .cierre-sub-en { position:relative; color:#cbd5e1; font-size:clamp(18px,calc(3.2vmin * var(--text-scale)),44px); font-style:italic; font-weight:600; letter-spacing:.12em; text-transform:uppercase; }
+    .cierre-message-es { position:relative; font-size:clamp(22px,calc(4.6vmin * var(--text-scale)),58px); font-weight:700; line-height:1.1; margin:1.6vmin auto .5vmin; max-width:1100px; }
+    .cierre-message-en { position:relative; color:#cbd5e1; font-size:clamp(16px,calc(3vmin * var(--text-scale)),40px); font-style:italic; line-height:1.15; }
+    .cierre-clock-wrap { position:relative; display:inline-flex; flex-direction:column; gap:.4vmin; margin-top:2.4vmin; padding:1vmin 4vw 1.4vmin; border-top:1px solid rgba(125,211,252,.42); border-bottom:1px solid rgba(125,211,252,.42); }
+    .cierre-clock-label { color:#bae6fd; font-size:clamp(12px,calc(1.6vmin * var(--text-scale)),24px); font-weight:800; letter-spacing:.18em; text-transform:uppercase; }
+    .cierre-clock { color:#fff; font-size:clamp(44px,12vmin,150px); font-weight:950; line-height:.95; letter-spacing:.06em; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════ MAIN SCREEN ══════════════════════ -->
+<div class="screen">
+
+  <div class="header">
+    <img src="./img/Encabezado.png" alt="Food Service DPT" class="header-logo" onerror="this.style.display='none'">
+    <div class="header-divider"></div>
+    <div class="header-title">
+      <div class="es">Menú del día</div>
+      <div class="en">Menu of the day</div>
+    </div>
+    <div class="header-spacer"></div>
+    <div class="header-datetime">
+      <div class="header-date" id="header-date">Cargando...</div>
+      <div class="header-time" id="header-time">--:--</div>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="main-col" id="main-col">
+      <div class="dish-pagination" id="dish-pagination" style="display:none;"></div>
+      <div class="no-data">
+        <span class="icon">⏳</span>
+        <p>Conectando con Firebase...</p>
+        <small>Espera un momento</small>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="legend-title">ALÉRGENOS<span class="en">Allergen Legend</span></div>
+      <div class="legend-list" id="legend-list"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span class="footer-brand">FOOD SERVICE DPT &nbsp;·&nbsp; Allergen Management System</span>
+    <span class="footer-updated"><span class="live-dot"></span><span id="footer-updated">En vivo</span></span>
+  </div>
+</div>
+
+<!-- ══════════════════════ CIERRE DE COMEDOR ══════════════════════ -->
+<div id="cierre-overlay" aria-live="polite">
+  <div class="cierre-card">
+    <img src="./img/Encabezado.png" alt="Food Service DPT" class="cierre-logo" onerror="this.style.display='none'">
+    <div class="cierre-kicker">Food Service DPT</div>
+    <div class="cierre-title">COMEDOR CERRADO</div>
+    <div class="cierre-sub-en">DINING ROOM CLOSED</div>
+    <div class="cierre-message-es" id="cierre-message-es">El comedor está cerrado</div>
+    <div class="cierre-message-en" id="cierre-message-en">The dining room is closed</div>
+    <div class="cierre-clock-wrap">
+      <div class="cierre-clock-label">HORA ACTUAL · CURRENT TIME</div>
+      <div class="cierre-clock" id="cierre-clock">--:--</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ TURNO OVERLAY ══════════════════════ -->
+<div id="turno-overlay">
+  <div class="turno-scrim" onclick="dismissTurno()"></div>
+
+  <div class="turno-card-tv" id="turno-card-tv">
+    <div class="turno-shimmer"></div>
+    <div class="turno-particles"></div>
+    <button class="turno-dismiss-btn" onclick="dismissTurno()">✕ Cerrar</button>
+
+    <span class="turno-bell" id="turno-bell">🔔</span>
+    <div class="turno-title" id="turno-title">CAMBIO DE TURNO · SHIFT CHANGE</div>
+
+    <!-- CAROUSEL INTEGRADO: mensaje de despedida + recordatorios -->
+    <div class="turno-carousel" id="turno-carousel">
+      <div class="carousel-track" id="carousel-track"></div>
+      <div class="carousel-dots" id="carousel-dots"></div>
+    </div>
+
+    <!-- CUENTA ATRÁS SIEMPRE VISIBLE (fuera del carousel) -->
+    <div class="turno-countdown-wrap">
+      <div class="turno-countdown-label" id="turno-countdown-label">Cambio de turno</div>
+      <div class="turno-progress-track">
+        <div class="turno-progress-bar" id="turno-progress-bar" style="width:100%"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  ESTADO TURNOS
+// ══════════════════════════════════════════════
+let turnosConfig     = [];           // from Firebase
+let remindersConfig  = [];           // from Firebase
+let carouselInterval  = 15;          // seconds between carousel slides
+let cierreConfig = null;             // cierre configurado desde el panel
+let firedTurnos      = new Set();    // HH:MM keys fired today to avoid re-triggering
+let lastFiredDate    = '';           // reset firedTurnos at midnight
+let turnoCountdown   = null;         // interval
+let turnoRemaining   = 0;
+let turnoTotal       = 60;
+let latestComedorData = null;        // último menú recibido (para reevaluar en el cambio de día)
+
+let lastRenderedMenuKey = '';
+
+// Carousel state
+let carouselTimer = null;
+let currentSlideIndex = 0;
+let totalPages = 1;
+
+// ── PAGINACIÓN Y ROTACIÓN DE PLATOS ──
+// En lugar de reducir fuentes hasta la ilegibilidad, dividimos los platos
+// en páginas que caben en el contenedor y rotan automáticamente cada X s.
+// Si hay una sola página, no hay rotación ni puntos de paginación.
+// (Declarado aquí arriba: showNoData/showOfflineState lo usan y se llaman
+// desde updateClock() en el primer tick, antes de este punto en el archivo.)
+let dishPagination = {
+  pages: [],           // Array de arrays: cada sub-array es una página de platos
+  current: 0,        // Índice de página actual
+  timer: null,       // setInterval timer
+  interval: 20000,   /* ms entre cambios de página (20 s para leer con comodidad) */
+  isPaused: false,   /* true mientras el ratón esté sobre el área de platos */
+  totalDwellMs: 20000,
+  minDwellMs: 10000
+};
+
+// Muestra el menú solo si su fecha es HOY (reinicio automático diario)
+// y solo re-renderiza si los datos han cambiado realmente
+function refreshMenuDisplay() {
+  if (!latestComedorData || latestComedorData.fecha !== todayStr()) {
+    showNoData();
+    lastRenderedMenuKey = '';
+    return;
+  }
+  const key = JSON.stringify(latestComedorData);
+  if (key === lastRenderedMenuKey) return;
+  lastRenderedMenuKey = key;
+  renderMenu(latestComedorData);
+}
+
+function cierreProgramadoActivo(now = new Date()) {
+  if (!cierreConfig?.programado || !cierreConfig.hora || !cierreConfig.duracion) return false;
+  const [h, m] = cierreConfig.hora.split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return false;
+  const start = new Date(now); start.setHours(h, m, 0, 0);
+  const end = new Date(start.getTime() + Number(cierreConfig.duracion) * 60000);
+  return now >= start && now < end;
+}
+function cierreActivo() { return !!cierreConfig?.activo || cierreProgramadoActivo(); }
+function refreshCierre() {
+  const overlay = document.getElementById('cierre-overlay');
+  const active = cierreActivo();
+  overlay.classList.toggle('visible', active);
+  if (!active) return;
+
+  // Mensajes configurables desde el panel de gestión
+  const msgEs = document.getElementById('cierre-message-es');
+  const msgEn = document.getElementById('cierre-message-en');
+  if (msgEs) msgEs.textContent = cierreConfig?.mensajeEs || 'El comedor está cerrado';
+  if (msgEn) msgEn.textContent = cierreConfig?.mensajeEn || 'The dining room is closed';
+
+  updateCierreClock();
+  // El cierre tiene prioridad sobre los avisos temporales de turno.
+  dismissTurno();
+}
+function updateCierreClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const el = document.getElementById('cierre-clock');
+  if (el) el.textContent = `${hh}:${mm}`;
+}
+
+// ══════════════════════════════════════════════
+//  CLOCK
+// ══════════════════════════════════════════════
+function updateClock() {
+  const now  = new Date();
+  const hh   = String(now.getHours()).padStart(2,'0');
+  const mm   = String(now.getMinutes()).padStart(2,'0');
+  const ss   = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('header-time').textContent = `${hh}:${mm}`;
+
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  if (lastFiredDate !== todayKey) {
+    lastFiredDate = todayKey;
+    firedTurnos.clear();
+    // Cambio de día: reevalúa el menú para que se "reinicie" solo si el menú ya no es de hoy
+    refreshMenuDisplay();
+  }
+
+  // Check turnos only at :00 seconds to avoid double-fire within the minute
+  refreshCierre();
+  if (cierreActivo()) updateCierreClock();
+  if (ss === '00' && !cierreActivo()) checkTurnos(`${hh}:${mm}`);
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ══════════════════════════════════════════════
+//  TURNO TRIGGER
+// ══════════════════════════════════════════════
+// Minutos que la cuenta atrás empieza ANTES de la hora del cambio de turno.
+// Compatibilidad hacia atrás: si un turno antiguo solo tiene "duracion" (segundos),
+// se convierte a minutos.
+function getMinutosAntes(t) {
+  if (typeof t.minutosAntes === 'number' && t.minutosAntes > 0) return t.minutosAntes;
+  if (typeof t.duracion === 'number' && t.duracion > 0) return Math.max(1, Math.round(t.duracion / 60));
+  return 5;
+}
+function hhmmToMin(hhmm) { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; }
+// minToHHMM viene de utils.js (compartido con el resto de la app).
+function fmtMMSS(sec) {
+  sec = Math.max(0, sec);
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+function checkTurnos(hhmm) {
+  if (!turnosConfig.length) return;
+  turnosConfig.forEach(t => {
+    if (!t.activo || !t.hora) return;
+    const antes = getMinutosAntes(t);
+    const startHHMM = minToHHMM(hhmmToMin(t.hora) - antes); // hora del cambio menos los minutos de antelación
+    const key = `${t.hora}-${startHHMM}`;
+    if (startHHMM === hhmm && !firedTurnos.has(key)) {
+      firedTurnos.add(key);
+      showTurno(t);
+    }
+  });
+}
+
+function showTurno(t) {
+  // Apply colors
+  const card = document.getElementById('turno-card-tv');
+  const bgColor   = t.bgColor   || '#1e3a5f';
+  const textColor = t.textColor || '#ffffff';
+  card.style.background = bgColor;
+  card.style.color      = textColor;
+
+  document.getElementById('turno-title').textContent = (t.label || 'Cambio de Turno').toUpperCase() + ' · SHIFT CHANGE';
+  ['turno-title','turno-countdown-label'].forEach(id => {
+    document.getElementById(id).style.color = textColor;
+  });
+  document.getElementById('turno-progress-bar').style.background = 'rgba(255,255,255,0.7)';
+
+  // Cuenta atrás HASTA la hora del cambio de turno
+  const hora     = t.hora;
+  const antes    = getMinutosAntes(t);
+  const totalSec = Math.max(1, antes * 60);
+  turnoTotal     = totalSec;
+  turnoRemaining = totalSec;
+  updateCountdownUI(hora);
+
+  // Build carousel (despedida + recordatorios)
+  buildTurnoCarousel(t);
+
+  // Show overlay
+  const overlay = document.getElementById('turno-overlay');
+  overlay.classList.add('visible');
+
+  // Ajustar el contenido después de que el overlay tenga sus dimensiones reales.
+  requestAnimationFrame(fitTurnoOverlay);
+
+  // Start carousel auto-advance (cada 15 segundos)
+  startCarousel();
+
+  // Countdown interval
+  clearInterval(turnoCountdown);
+  turnoCountdown = setInterval(() => {
+    turnoRemaining--;
+    updateCountdownUI(hora);
+    if (turnoRemaining <= 0) { clearInterval(turnoCountdown); dismissTurno(); }
+  }, 1000);
+}
+
+// Ajusta el overlay de turno sin tocar los tamaños de fuente (que ya vienen de
+// variables CSS escaladas). Sólo encoge el alto del carrusel si la tarjeta no
+// cabe en el viewport.
+function fitTurnoOverlay() {
+  const card = document.getElementById('turno-card-tv');
+  const carousel = document.getElementById('turno-carousel');
+  if (!card || !carousel) return;
+
+  const maxH = window.innerHeight * 0.94;
+  const overflow = card.scrollHeight - maxH;
+  if (overflow > 0) {
+    const h = carousel.clientHeight || 0;
+    carousel.style.height = Math.max(100, h - overflow) + 'px';
+  }
+}
+
+function updateCountdownUI(hora) {
+  const pct = (turnoRemaining / turnoTotal) * 100;
+  document.getElementById('turno-progress-bar').style.width = Math.max(0, pct) + '%';
+  const label = turnoRemaining > 0
+    ? `Cambio de turno a las ${hora} · en ${fmtMMSS(turnoRemaining)}`
+    : `¡Es la hora del cambio de turno!`;
+  document.getElementById('turno-countdown-label').textContent = label;
+}
+
+function dismissTurno() {
+  const overlay = document.getElementById('turno-overlay');
+  overlay.classList.remove('visible');
+  clearInterval(turnoCountdown);
+  stopCarousel();
+}
+
+// ══════════════════════════════════════════════
+//  TURNO CAROUSEL (despedida + recordatorios) — 1 slide por vista
+// ══════════════════════════════════════════════
+function updateCarouselPagination() {
+  const track = document.getElementById('carousel-track');
+  const dots = document.getElementById('carousel-dots');
+  if (!track || !dots) return;
+
+  totalPages = Math.max(1, track.children.length);
+
+  dots.innerHTML = '';
+  for (let i = 0; i < totalPages; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+    dot.onclick = () => goToPage(i);
+    dots.appendChild(dot);
+  }
+  goToPage(Math.min(currentSlideIndex, totalPages - 1));
+}
+
+function buildTurnoCarousel(t) {
+  const track = document.getElementById('carousel-track');
+  const dots = document.getElementById('carousel-dots');
+  const carousel = document.getElementById('turno-carousel');
+
+  if (!carousel || !track || !dots) return;
+
+  const slides = [];
+  // Slide 1: mensaje de despedida (sin imagen)
+  slides.push({
+    type: 'farewell',
+    image: null,
+    textEs: t.mensajeEs || '¡Gracias! Por favor, libera tu mesa.',
+    textEn: t.mensajeEn || 'Thank you! Please clear your table.',
+    label: ''
+  });
+  // Slides siguientes: recordatorios (imagen lateral + mensaje grande)
+  remindersConfig.forEach((r, i) => {
+    slides.push({
+      type: 'reminder',
+      image: r.image,
+      textEs: r.mensajeEs,
+      textEn: r.mensajeEn || '',
+      label: `Recordatorio ${i + 1} · Reminder ${i + 1}`
+    });
+  });
+
+  carousel.style.display = 'block';
+  track.innerHTML = '';
+  dots.innerHTML = '';
+  currentSlideIndex = 0;
+  track.style.transform = 'translateX(0)';
+
+  slides.forEach(slide => {
+    const div = document.createElement('div');
+    div.className = 'carousel-slide' + (slide.type === 'farewell' ? ' farewell' : '');
+
+    // Construido con DOM/textContent (no innerHTML) para que los mensajes
+    // introducidos en el panel de gestión no puedan inyectar HTML.
+    if (slide.image) {
+      const media = document.createElement('div');
+      media.className = 'slide-media';
+      const img = document.createElement('img');
+      img.src = slide.image;
+      img.alt = slide.label;
+      img.onerror = () => { img.style.display = 'none'; };
+      media.appendChild(img);
+      div.appendChild(media);
+    }
+
+    const textCol = document.createElement('div');
+    textCol.className = 'slide-text-col';
+
+    if (slide.label) {
+      const label = document.createElement('div');
+      label.className = 'slide-label';
+      label.textContent = slide.label;
+      textCol.appendChild(label);
+    }
+
+    const esDiv = document.createElement('div');
+    esDiv.className = 'slide-text-es';
+    esDiv.textContent = slide.textEs;
+    textCol.appendChild(esDiv);
+
+    const enDiv = document.createElement('div');
+    enDiv.className = 'slide-text-en';
+    enDiv.textContent = slide.textEn || '';
+    textCol.appendChild(enDiv);
+
+    div.appendChild(textCol);
+    track.appendChild(div);
+  });
+
+  updateCarouselPagination();
+}
+
+function startCarousel() {
+  stopCarousel();
+  const totalSlides = document.getElementById('carousel-track')?.children.length || 0;
+  if (totalSlides <= 1) return;
+  updateCarouselPagination();
+  carouselTimer = setInterval(() => {
+    goToPage((currentSlideIndex + 1) % totalPages);
+  }, carouselInterval * 1000);
+}
+
+function stopCarousel() {
+  if (carouselTimer) {
+    clearInterval(carouselTimer);
+    carouselTimer = null;
+  }
+}
+
+function goToPage(pageIndex) {
+  const track = document.getElementById('carousel-track');
+  const dots = document.querySelectorAll('.carousel-dot');
+  if (!track || totalPages === 0) return;
+
+  pageIndex = ((pageIndex % totalPages) + totalPages) % totalPages;
+  currentSlideIndex = pageIndex;
+  track.style.transform = `translateX(${-100 * pageIndex}%)`;
+
+  dots.forEach((dot, i) => dot.classList.toggle('active', i === pageIndex));
+}
+
+// ══════════════════════════════════════════════
+//  DATE DISPLAY
+// ══════════════════════════════════════════════
+function formatDateEs(dateStr) {
+  if (!dateStr) return formatDateEs(todayStr());
+  const [y,m,d] = dateStr.split('-');
+  const fecha = new Date(+y, +m-1, +d);
+  const weekday = fecha.toLocaleDateString('es-ES', { weekday:'long' });
+  const day = fecha.getDate();
+  const month = fecha.toLocaleDateString('es-ES', { month:'long' });
+  const year = fecha.getFullYear();
+  const weekdayCapitalized = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  return `${weekdayCapitalized}, ${day} de ${month} de ${year}`;
+}
+
+function measureAverageDishHeight(platos) {
+  const mainCol = document.getElementById('main-col');
+  if (!mainCol || !platos.length) return 100;
+
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;left:-10000px;top:0;width:' + mainCol.clientWidth + 'px;visibility:hidden;pointer-events:none;';
+  platos.forEach(p => { probe.insertAdjacentHTML('beforeend', createDishRow(p)); });
+  document.body.appendChild(probe);
+
+  const heights = [];
+  probe.querySelectorAll('.dish-row').forEach(row => {
+    const cs = getComputedStyle(row);
+    const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    const content = row.querySelector('.dish-content');
+    const allergens = row.querySelector('.dish-allergens');
+    const rowH = Math.max(content ? content.scrollHeight : 0, allergens ? allergens.scrollHeight : 0) + padY;
+    heights.push(rowH);
+  });
+
+  document.body.removeChild(probe);
+
+  if (heights.length === 0) return 100;
+  const sum = heights.reduce((a, b) => a + b, 0);
+  return sum / heights.length;
+}
+
+function calculatePages(platos) {
+  const mainCol = document.getElementById('main-col');
+  if (!mainCol) return { pages: [], totalPages: 0, dwellMs: 20000, rotationEnabled: false };
+
+  const availableH = mainCol.clientHeight;
+  if (availableH === 0) {
+    return {
+      pages: platos.map(p => [p]),
+      totalPages: platos.length,
+      dwellMs: 20000,
+      rotationEnabled: false
+    };
+  }
+
+  const minRowsPerPage = 4;
+
+  if (platos.length <= minRowsPerPage) {
+    return {
+      pages: [platos],
+      totalPages: 1,
+      dwellMs: 20000,
+      rotationEnabled: false
+    };
+  }
+
+  const pagEl = document.getElementById('dish-pagination');
+  const pagH = (pagEl && pagEl.offsetParent !== null) ? pagEl.getBoundingClientRect().height : 0;
+  const cs = getComputedStyle(mainCol);
+  const gap = parseFloat(cs.gap || '0') || 0;
+  const padTop = parseFloat(cs.paddingTop || '0') || 0;
+  const usableH = Math.max(0, availableH - pagH - padTop);
+
+  let rowH = measureAverageDishHeight(platos);
+  if (rowH === 0) {
+    rowH = usableH > 0 ? usableH / 4 : 120;
+  }
+
+  const maxRows = Math.max(1, Math.floor(usableH / (rowH + gap)));
+  const pages = [];
+  for (let i = 0; i < platos.length; i += maxRows) {
+    pages.push(platos.slice(i, i + maxRows));
+  }
+
+  const total = pages.length;
+  const dwellMs = dishPagination.totalDwellMs;
+
+  if (total <= 1) {
+    dishPagination.pages = pages;
+    dishPagination.current = 0;
+    dishPagination.timer = null;
+    dishPagination.interval = 20000;
+    dishPagination.isPaused = false;
+    return { pages, totalPages: total, dwellMs, rotationEnabled: false };
+  }
+
+  dishPagination.pages = pages;
+  dishPagination.current = 0;
+  dishPagination.totalDwellMs = dwellMs;
+  dishPagination.minDwellMs = 10000;
+  dishPagination.dwellMs = dwellMs;
+  dishPagination.rotationEnabled = true;
+  return { pages, totalPages: total, dwellMs, rotationEnabled: true };
+}
+
+// Renderizar la página actual de platos
+function renderDishPage(pageIndex) {
+  const mainCol = document.getElementById('main-col');
+  if (!mainCol) return;
+  const page = dishPagination.pages[pageIndex];
+  if (!page) return;
+
+  // Desvanecer salida / entrar página nueva
+  mainCol.style.transition = 'opacity 220ms ease, transform 220ms ease';
+  mainCol.style.opacity = 0;
+  mainCol.style.transform = 'translateY(6px)';
+
+  // Limpiar filas previas (preservando el contenedor dish-pagination)
+  mainCol.querySelectorAll('.dish-row, .no-data').forEach(el => el.remove());
+  page.forEach(p => {
+    const row = createDishRow(p);
+    mainCol.insertAdjacentHTML('beforeend', row);
+  });
+
+  // Reaparecer
+  requestAnimationFrame(() => {
+    mainCol.style.opacity = '';
+    mainCol.style.transform = '';
+  });
+
+  // Actualizar indicador de página
+  setDishPageDotsHTML();
+
+  // Ajustar el texto para que ningún plato se salga de su cuadro.
+  fitDishText();
+}
+
+// Navegación manual: siguiente página
+function nextDishPage() {
+  if (!dishPagination.rotationEnabled) return;
+  const n = (dishPagination.current + 1) % dishPagination.pages.length;
+  goToDishPage(n);
+}
+
+// Navegación manual: página anterior
+function prevDishPage() {
+  if (!dishPagination.rotationEnabled) return;
+  const n = (dishPagination.current - 1 + dishPagination.pages.length) % dishPagination.pages.length;
+  goToDishPage(n);
+}
+
+// Ir a página directa (usado por los puntos)
+function goToDishPage(n) {
+  if (!dishPagination.rotationEnabled) return;
+  dishPagination.current = n;
+  stopRotation(); // stop any auto-rotation first
+  renderDishPage(n);
+  startRotation(); // restart timer
+}
+
+// Controles de paginación (por si hay controles manuales HTML)
+function setDishPageDotsHTML() {
+  const container = document.getElementById('dish-pagination');
+  if (!container) return;
+  if (dishPagination.pages.length <= 1) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'flex';
+  const dots = dishPagination.pages.map((_, i) =>
+    `<button class="page-dot${i === dishPagination.current ? ' active' : ''}"
+            aria-label="Ir a página ${i + 1}" onclick="goToDishPage(${i})"></button>`
+  ).join('');
+  container.innerHTML = dots;
+}
+
+// Iniciar rotación automática
+function startRotation() {
+  if (!dishPagination.rotationEnabled || dishPagination.pages.length <= 1) return;
+  stopRotation(); // asegura que no haya timers previos
+  dishPagination.timer = setInterval(() => {
+    if (dishPagination.isPaused) return;
+    const n = (dishPagination.current + 1) % dishPagination.pages.length;
+    goToDishPage(n);
+  }, dishPagination.interval);
+}
+
+// Detener rotación
+function stopRotation() {
+  if (dishPagination.timer) {
+    clearInterval(dishPagination.timer);
+    dishPagination.timer = null;
+  }
+}
+
+// Resetear timer (por ejemplo, al pasar el ratón)
+function resetRotationTimer() {
+  stopRotation();
+  startRotation();
+}
+
+// Marcar que el ratón está sobre el área de platos (pausar rotación)
+function pauseRotation() {
+  dishPagination.isPaused = true;
+}
+function resumeRotation() {
+  dishPagination.isPaused = false;
+  resetRotationTimer();
+}
+
+// ── AUTO-AJUSTE DE TEXTO ──
+// Si un nombre de plato (o su traducción) desborda su tarjeta, se reduce su
+// tamaño de fuente hasta que quepa, sin cortar el contenido ni salirse del cuadro.
+function fitDishText() {
+  document.querySelectorAll('#main-col .dish-row').forEach(row => {
+    const content = row.querySelector('.dish-content');
+    const nameEl  = row.querySelector('.dish-name-es');
+    if (!content || !nameEl) return;
+    const h = row.clientHeight;
+    if (h <= 0) return;
+    const enEl = row.querySelector('.dish-name-en');
+    const overflows = () => content.scrollHeight > h + 2;
+    if (!overflows()) return;
+    let fs = parseFloat(getComputedStyle(nameEl).fontSize) || 30;
+    const minFs = Math.max(12, Math.round(fs * 0.5));
+    while (overflows() && fs > minFs) {
+      fs -= 1;
+      nameEl.style.fontSize = fs + 'px';
+      if (enEl) enEl.style.fontSize = Math.max(11, Math.round(fs * 0.72)) + 'px';
+    }
+  });
+}
+
+// ── RENDERER DE FILA DE PLATO (extraído para usar en paginación) ──
+function createDishRow(plato) {
+  const contiene = plato.contiene || [];
+  const trazas = plato.trazas || [];
+  const nameEs = escHtml(plato.nombreEs || 'PLATO SIN NOMBRE');
+  const nameEn = plato.nombreEn ? escHtml(plato.nombreEn) : '';
+
+  // Icono de alérgeno (el nombre ES/EN vive en la leyenda lateral).
+  // Los datos vienen de allergen-data.js (ALLERGEN_BY_ID); los nombres de
+  // plato se escapan con escHtml() para no inyectar HTML accidentalmente.
+  const icon = (id, trace) => {
+    const a = ALLERGEN_BY_ID[id];
+    if (!a) return '';
+    return `<div class="alg-icon-wrap${trace ? ' trace-icon' : ''}" title="${a.es} · ${a.en}">
+      <img src="${a.icon}" alt="${a.es}" onerror="this.style.display='none'">
+    </div>`;
+  };
+
+  const containIcons = contiene.map(id => icon(id, false)).join('');
+  const traceIcons = trazas.map(id => icon(id, true)).join('');
+
+  let allergensHtml = '';
+  if (contiene.length === 0 && trazas.length === 0) {
+    allergensHtml = `<div class="no-allergen">
+      <span class="shield-ok" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 2 L20 5 V11 C20 16.2 16.4 19.8 12 22 C7.6 19.8 4 16.2 4 11 V5 Z" fill="#16a34a"/><path d="M7.5 12.3 l3 3 l5.5 -6.5" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="no-allergen-txt"><span class="es">Libre de alérgenos</span><span class="en">Allergen-free</span></span>
+    </div>`;
+  } else {
+    if (contiene.length > 0) {
+      allergensHtml += `<div class="allergen-section contain"><span class="section-label contain-label">CONTIENE</span><div class="allergen-grid">${containIcons}</div></div>`;
+    }
+    if (trazas.length > 0) {
+      allergensHtml += `<div class="allergen-section traces"><span class="section-label trace-label">⚠ TRAZAS</span><div class="allergen-grid traces-grid">${traceIcons}</div></div>`;
+    }
+  }
+
+  const noGlutenSvg = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M8 12.5l2.5 2.5 5.5-6.5" fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const sinGlutenBadge = plato.sinGluten
+    ? `<span class="sin-gluten-badge"><span class="sin-gluten-icon"><img src="./img/alergenos_gluten.svg" alt="" aria-hidden="true">${noGlutenSvg}</span><span class="sin-gluten-text"><span class="sin-gluten-es">Sin gluten · pregunte al personal</span><span class="sin-gluten-en">Gluten-free · ask staff</span></span></span>`
+    : '';
+
+  // Línea horizontal del nombre EN + badge (el badge va al lado, sin añadir alto).
+  const enLine = (nameEn || sinGlutenBadge)
+    ? `<div class="dish-name-en-line">${nameEn ? `<div class="dish-name-en-wrap"><p class="dish-name-en">${nameEn}</p></div>` : ''}${sinGlutenBadge}</div>`
+    : '';
+
+  return `
+    <article class="dish-row" role="listitem" aria-label="${nameEs}">
+      <div class="dish-content">
+        <h3 class="dish-name-es">${nameEs}</h3>
+        ${enLine}
+      </div>
+      <div class="dish-allergens">${allergensHtml}</div>
+    </article>`;
+}
+
+// ── INICIALIZACIÓN Y AJUSTE ──
+function initDishPagination(platos) {
+  const mainCol = document.getElementById('main-col');
+  if (!mainCol) return;
+
+  mainCol.querySelectorAll('.dish-row, .no-data').forEach(el => el.remove());
+  platos.forEach(p => {
+    mainCol.insertAdjacentHTML('beforeend', createDishRow(p));
+  });
+
+  const hasOverflow = mainCol.scrollHeight > mainCol.clientHeight;
+
+  if (!hasOverflow) {
+    dishPagination.pages = [platos];
+    dishPagination.current = 0;
+    dishPagination.totalPages = 1;
+    dishPagination.rotationEnabled = false;
+    const container = document.getElementById('dish-pagination');
+    if (container) container.style.display = 'none';
+    stopRotation();
+    fitDishText();
+    return;
+  }
+
+  const calc = calculatePages(platos);
+  dishPagination.pages = calc.pages;
+  dishPagination.current = 0;
+  dishPagination.totalPages = calc.totalPages;
+  dishPagination.rotationEnabled = calc.rotationEnabled;
+  dishPagination.dwellMs = calc.dwellMs;
+
+  if (dishPagination.pages.length > 0) {
+    renderDishPage(0);
+  }
+
+  if (dishPagination.rotationEnabled && dishPagination.pages.length > 1) {
+    setDishPageDotsHTML();
+    startRotation();
+  } else {
+    const container = document.getElementById('dish-pagination');
+    if (container) container.style.display = 'none';
+  }
+
+  if (mainCol && !dishPagination._eventsBound) {
+    dishPagination._eventsBound = true;
+    mainCol.addEventListener('mouseenter', pauseRotation);
+    mainCol.addEventListener('mouseleave', resumeRotation);
+  }
+}
+
+// ── RE-CALCULAR al cambiar ventana ──
+function recomputeDishPagination() {
+  // Igual que refreshMenuDisplay: solo repaginamos si el menú sigue siendo de hoy.
+  if (!latestComedorData || latestComedorData.fecha !== todayStr()) return;
+  initDishPagination((latestComedorData.platos || []).filter(p => !p.oculto));
+}
+
+// ── Integración con renderMenu ──
+function renderMenu(data) {
+  const platos = (data.platos || []).filter(p => !p.oculto);
+  buildLegend([]); // siempre los 14 alérgenos de referencia
+  latestComedorData = data;
+  document.getElementById('header-date').textContent = formatDateEs(data.fecha);
+
+  // Menú publicado pero sin platos: estado vacío (no el spinner de carga).
+  if (platos.length === 0) {
+    showNoData(true);
+    return;
+  }
+
+  initDishPagination(platos);
+
+  const now = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  document.getElementById('footer-updated').textContent = `Actualizado a las ${now}`;
+}
+
+// ══════════════════════════════════════════════
+//  LEGEND
+// ══════════════════════════════════════════════
+function buildLegend(usedIds) {
+  const list = document.getElementById('legend-list');
+  const toShow = usedIds.length ? ALLERGENS.filter(a => usedIds.includes(a.id)) : ALLERGENS;
+  list.innerHTML = toShow.map(a => `
+    <div class="legend-item">
+      <div class="legend-circle" style="background:${a.color}20">
+        <img src="${a.icon}" alt="${a.es}" onerror="this.style.display='none'">
+      </div>
+      <div class="legend-text-wrap">
+        <span class="legend-es">${a.es}</span>
+        <span class="legend-en">${a.en}</span>
+      </div>
+    </div>`).join('');
+}
+
+
+window.addEventListener('resize', () => {
+  requestAnimationFrame(recomputeDishPagination);
+  if (document.getElementById('turno-overlay')?.classList.contains('visible')) {
+    requestAnimationFrame(fitTurnoOverlay);
+  }
+});
+
+// ══════════════════════════════════════════════
+//  FIREBASE
+// ══════════════════════════════════════════════
+function initFirebase() {
+  try {
+    if (!firebaseConfig || firebaseConfig.apiKey === 'TU_API_KEY_AQUI') { showOfflineState(); return; }
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Menu listener — reinicio automático diario:
+    // solo se muestra el menú si su fecha es la de HOY; si no, se considera "no publicado".
+    db.ref('menu/comedor').on('value', snap => {
+      latestComedorData = snap.val();
+      refreshMenuDisplay();
+    }, err => { console.error(err); showOfflineState(); });
+
+    // Turnos listener (updates config in real time)
+    db.ref('turnos').on('value', snap => {
+      const data = snap.val();
+      const arr = Array.isArray(data) ? data : (data && typeof data === 'object' ? Object.values(data).filter(Boolean) : []);
+      turnosConfig = arr;
+      console.log(`[Turnos] ${turnosConfig.filter(t=>t.activo).length} activos cargados.`);
+    });
+
+    // Recordatorios listener
+    db.ref('recordatorios').on('value', snap => {
+      const data = snap.val();
+      if (data && Array.isArray(data)) {
+        // Old format: just an array
+        remindersConfig = data;
+        console.log(`[Recordatorios] ${remindersConfig.length} cargados.`);
+      } else if (data && typeof data === 'object' && data.reminders) {
+        // New format with carouselInterval
+        remindersConfig = data.reminders || [];
+        carouselInterval = data.carouselInterval || 15;
+        console.log(`[Recordatorios] ${remindersConfig.length} cargados, intervalo: ${carouselInterval}s.`);
+      } else {
+        remindersConfig = [];
+        carouselInterval = 15;
+      }
+    });
+
+    db.ref('cierreComedor').on('value', snap => {
+      cierreConfig = snap.val() || null;
+      refreshCierre();
+    }, err => console.error(err));
+
+    // Ajustes de tamaño de texto configurados desde el panel de gestión.
+    // Antes esto se leía de localStorage con un sondeo cada segundo, lo
+    // cual solo funcionaba si gestión y TV compartían el mismo navegador.
+    // Con un listener de Firebase llega en tiempo real desde cualquier
+    // dispositivo, que es el caso normal de uso (PC de gestión + TV aparte).
+    db.ref('tvSettings').on('value', snap => {
+      const settings = snap.val();
+      if (settings) {
+        applyTVSettings(settings);
+        localStorage.setItem('tvSettings', JSON.stringify(settings));
+      }
+    }, err => console.warn('tvSettings:', err));
+  } catch(e) { console.error(e); showOfflineState(); }
+}
+
+// Muestra el estado "sin datos". empty=true = menú publicado pero sin platos.
+// Detiene la rotación y limpia la paginación para que un timer viejo no
+// re-inserte el menú anterior (p. ej. tras el cambio de día).
+function showNoData(empty = false) {
+  stopRotation();
+  dishPagination.pages = [];
+  dishPagination.rotationEnabled = false;
+
+  const mainCol = document.getElementById('main-col');
+  const dots = mainCol.querySelector('#dish-pagination');
+  const msg = empty
+    ? '<div class="no-data"><span class="icon">🍽️</span><p>Menú publicado sin platos</p><small>No dishes have been added yet</small></div>'
+    : '<div class="no-data"><span class="icon">🍽️</span><p>Menú del día no publicado</p><small>Today\'s menu has not been published yet</small></div>';
+  mainCol.innerHTML = msg;
+  if (dots) mainCol.appendChild(dots);
+  document.getElementById('header-date').textContent = formatDateEs(null);
+}
+function showOfflineState() {
+  stopRotation();
+  dishPagination.pages = [];
+  dishPagination.rotationEnabled = false;
+
+  const mainCol = document.getElementById('main-col');
+  const dots = mainCol.querySelector('#dish-pagination');
+  mainCol.innerHTML =
+    '<div class="no-data"><span class="icon">⚠️</span><p>Firebase no configurado</p><small>Edita firebase-config.js</small></div>';
+  if (dots) mainCol.appendChild(dots);
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  applyTVSettingsFromStorage();
+  buildLegend([]);
+  initFirebase();
+  updateClock();
+});
+
+window.addEventListener('beforeunload', () => {
+  try {
+    if (typeof firebase !== 'undefined' && firebase.apps?.length) {
+      const db = firebase.database();
+      db.ref('menu/comedor').off();
+      db.ref('turnos').off();
+      db.ref('recordatorios').off();
+      db.ref('cierreComedor').off();
+      db.ref('tvSettings').off();
+    }
+  } catch(e) {}
+  if (dishPagination.timer) clearInterval(dishPagination.timer);
+  if (turnoCountdown) clearInterval(turnoCountdown);
+  if (carouselTimer) clearInterval(carouselTimer);
+});
+
+// ══════════════════════════════════════════════
+//  TV SETTINGS — tamaños configurados desde el panel de gestión
+// ══════════════════════════════════════════════
+function applyTVSettings(settings) {
+  if (!settings) return;
+  const root = document.documentElement.style;
+
+  // Única fuente de calibración: el factor --text-scale. Los tamaños de plato,
+  // iconos, turno y carrusel se derivan de él a través de las variables CSS.
+  if (settings.textScale !== undefined) {
+    const scale = Math.max(0.5, Math.min(2.0, parseFloat(settings.textScale) || 1));
+    root.setProperty('--text-scale', scale + '');
+  }
+}
+// Aplicación inmediata al cargar la página (por si Firebase tarda un
+// instante en conectar, o como único origen si no está configurado).
+function applyTVSettingsFromStorage() {
+  try { applyTVSettings(JSON.parse(localStorage.getItem('tvSettings') || '{}')); }
+  catch (e) { /* localStorage corrupto o inaccesible: se ignora */ }
+}
+</script>
+</body>
+</html>
